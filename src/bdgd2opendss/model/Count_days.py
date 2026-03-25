@@ -96,7 +96,7 @@ def count_day_type(ano):
             df_aux.loc[i,'dom_i'] = count_days('dom',i+1, ano)
 
     df_days = pd.merge(df_aux, df_days, on='mes', how='left')
-    df_days['holiday_busday_count'].fillna(0, inplace=True )
+    df_days['holiday_busday_count'] = df_days['holiday_busday_count'].fillna(0)
 
     df_days['next_month'] = df_days['mes_ano'].shift(-1)
     df_days.iloc[-1,-1] = str(ano+1)+'-01'

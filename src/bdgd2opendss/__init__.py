@@ -1,4 +1,4 @@
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 from bdgd2opendss.model.Converter import *
 from bdgd2opendss.model.Circuit import *
 from bdgd2opendss.model.LineCode import *

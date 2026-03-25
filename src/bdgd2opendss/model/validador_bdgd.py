@@ -1131,7 +1131,7 @@ class ValidadorBDGD:
                         i = df_aux_trafo.index[df_aux_trafo['PAC_2'] == elem.PAC_1].tolist()[0]
                     except:
                         i = df_aux_trafo.index[df_aux_trafo['PAC_1'] == elem.PAC_1].tolist()[0]
-                        print(f'Carga BT {elem.COD_ID} conectada no primário do trafo {df_aux_trafo.at[i,'COD_ID']}!!')
+                        print(f'Carga BT {elem.COD_ID} conectada no primário do trafo {df_aux_trafo.at[i, "COD_ID"]}!!')
                     fase = df_elements_bt.at[i,'FAS_CON']
                     if set(elem.FAS_CON) <= set(fase+'N'):
                         continue #faseamento correto

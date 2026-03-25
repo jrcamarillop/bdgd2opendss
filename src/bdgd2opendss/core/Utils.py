@@ -888,10 +888,10 @@ def seq_eletrica(dataframe: Optional[gpd.geodataframe.GeoDataFrame] = None, feed
 
 def get_substation(sub:Optional[str] = None):
     global substation
-    if sub == None or len(sub) == 0 or " " in sub:
+    if pd.isna(sub) or (isinstance(sub, str) and (len(sub) == 0 or " " in sub)):
         substation = "__"
     else:
-        substation = "__" + sub
+        substation = "__" + str(sub)
 
 def list_subs(df,output_path):
     if output_path == None:

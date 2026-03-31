@@ -169,7 +169,10 @@ def create_output_file(object_list=[], file_name="", object_lists="", file_names
             with open(path, k) as file:
                 for string in object_list:
                     try:
-                        file.write(string.full_string() + "\n")
+                        if type(string) == str:
+                            file.write(string + "\n")
+                        else:
+                            file.write(string.full_string() + "\n")
 
                     except Exception as e:
                         print(f"An error occurred: {str(e)}")

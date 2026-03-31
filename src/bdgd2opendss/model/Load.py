@@ -600,51 +600,107 @@ class Load:
 
     @staticmethod
     def create_load_from_json(json_data: Any, dataframe: gpd.geodataframe.GeoDataFrame,crv_dataframe: gpd.geodataframe.GeoDataFrame, entity: str, pastadesaida: str = ""):
-    #def create_load_from_json(json_data: Any, dataframe: gpd.geodataframe.GeoDataFrame,crv_dataframe: gpd.geodataframe.GeoDataFrame, entity: str, kVbaseObj: Any, pastadesaida: str = ""):
-        
-        # global _kVbase_GLOBAL #TODO Verificar com o Ezequiel
-        # _kVbase_GLOBAL = kVbaseObj.MV_kVbase
+        from collections import defaultdict
+        import os
+        from bdgd2opendss.core.Utils import create_output_folder, get_cod_year_bdgd, get_configuration
 
-        DU_meses = {"01": [],"02": [],"03": [],"04": [],"05": [],"06": [],"07": [],"08": [],"09": [],"10": [],"11": [],"12": []}
-        DO_meses = {"01": [],"02": [],"03": [],"04": [],"05": [],"06": [],"07": [],"08": [],"09": [],"10": [],"11": [],"12": []}
-        SA_meses = {"01": [],"02": [],"03": [],"04": [],"05": [],"06": [],"07": [],"08": [],"09": [],"10": [],"11": [],"12": []}
+        DU_meses = {f"{mes:02d}": [] for mes in range(1, 13)}
+        DO_meses = {f"{mes:02d}": [] for mes in range(1, 13)}
+        SA_meses = {f"{mes:02d}": [] for mes in range(1, 13)}
+
+        DU_meses_trafo = {f"{mes:02d}": defaultdict(list) for mes in range(1, 13)}
+        DO_meses_trafo = {f"{mes:02d}": defaultdict(list) for mes in range(1, 13)}
+        SA_meses_trafo = {f"{mes:02d}": defaultdict(list) for mes in range(1, 13)}
 
         meses = [f"{mes:02d}" for mes in range(1, 13)]
 
         load_config = json_data['elements']['Load'][entity] 
         interactive = load_config.get('interactive')
         crv_dataframe = Load.compute_pre_kw(crv_dataframe)
-        # dataframe = dataframe.head(200)
+
+        feeder_name = ""
 
         progress_bar = tqdm(dataframe.iterrows(), total=len(dataframe), desc="Load", unit=" loads", ncols=100)
         for _, row in progress_bar:
             load_ = Load._create_load_from_row(load_config, row, entity, _)
+            if not feeder_name:
+                feeder_name = load_.feeder
+
             crv_dataframe_aux = crv_dataframe[crv_dataframe['COD_ID'] == f'{load_.daily}']
 
-            if interactive is not None: #parametro_iteravel, objeto
+            if interactive is not None:
                 for i in interactive['tip_dias']:
-
                     for mes in meses:
                         new_load = copy.deepcopy(load_)
                         new_load.tip_dia = i
-                        new_load.kw = new_load.calculate_kw(df=crv_dataframe_aux, tip_dia=i, mes=mes) #TODO observar aqui o problema dos loadshapes
+                        new_load.kw = new_load.calculate_kw(df=crv_dataframe_aux, tip_dia=i, mes=mes)
 
-                        if i=="DU":
-                            DU_meses[mes].append(new_load)
-                        elif i =="SA":
-                            SA_meses[mes].append(new_load)
-                        elif i =="DO":
-                            DO_meses[mes].append(new_load)
-
+                        trafo = str(getattr(new_load, "transformer", "")).strip()
+                        if trafo.lower() in ["nan", "none", "<na>"]:
+                            trafo = ""
+                            
+                        # Exclude only MT loads from being segregated by transformer automatically 
+                        is_mt = ("MT" in entity)
+                        
+                        if trafo and not is_mt:
+                            if i == "DU":
+                                DU_meses_trafo[mes][trafo].append(new_load)
+                            elif i == "SA":
+                                SA_meses_trafo[mes][trafo].append(new_load)
+                            elif i == "DO":
+                                DO_meses_trafo[mes][trafo].append(new_load)
+                        else:
+                            if i == "DU":
+                                DU_meses[mes].append(new_load)
+                            elif i == "SA":
+                                SA_meses[mes].append(new_load)
+                            elif i == "DO":
+                                DO_meses[mes].append(new_load)
 
             progress_bar.set_description(f"Processing load {entity} {_ + 1}")
 
-        file_name = Load._create_output_load_files(DU_meses, "DU", name= load_config["arquivo"], feeder=load_.feeder, pastadesaida=pastadesaida)
-        Load._create_output_load_files(SA_meses, "SA", name= load_config["arquivo"], feeder=load_.feeder, pastadesaida=pastadesaida)
-        Load._create_output_load_files(DO_meses, "DO", name= load_config["arquivo"], feeder=load_.feeder, pastadesaida=pastadesaida)
+        if feeder_name:
+            base_output_dir = create_output_folder(feeder=feeder_name, output_folder=pastadesaida)
+            file_name_cfg = load_config.get("arquivo", "")
+            
+            if not hasattr(Load, "_session_files"):
+                Load._session_files = set()
+            
+            for tip_day, trafo_dict, main_list in [("DU", DU_meses_trafo, DU_meses), ("SA", SA_meses_trafo, SA_meses), ("DO", DO_meses_trafo, DO_meses)]:
+                for mes in meses:
+                    trafo_mes = trafo_dict[mes]
+                    for trafo, trafo_loads in trafo_mes.items():
+                        
+                        trafo_folder = f"TR_{trafo}"
+                        trafo_dir = os.path.join(base_output_dir, trafo_folder)
+                        os.makedirs(trafo_dir, exist_ok=True)
+                        
+                        file_name = f'{file_name_cfg[:8]}_{tip_day}{mes}_{trafo_folder}'
+                        full_name = f'{file_name}_{get_cod_year_bdgd(typ="yearcod")}_{feeder_name}_{get_configuration()}.dss'
+                        file_path = os.path.join(trafo_dir, full_name)
+                        
+                        if file_path not in Load._session_files:
+                            mode = "w"
+                            Load._session_files.add(file_path)
+                            needs_redirect = True
+                        else:
+                            mode = "a"
+                            needs_redirect = False
+                        
+                        with open(file_path, mode) as f_trafo:
+                            for ld in trafo_loads:
+                                f_trafo.write(ld.full_string() + "\n")
+                        
+                        # Use forward slashes for OpenDSS redirects
+                        rel_path = f"{trafo_folder}/{full_name}"
+                        if needs_redirect:
+                            main_list[mes].append(f'Redirect "{rel_path}"')
+
+        file_name = Load._create_output_load_files(DU_meses, "DU", name= load_config["arquivo"], feeder=feeder_name, pastadesaida=pastadesaida)
+        Load._create_output_load_files(SA_meses, "SA", name= load_config["arquivo"], feeder=feeder_name, pastadesaida=pastadesaida)
+        Load._create_output_load_files(DO_meses, "DO", name= load_config["arquivo"], feeder=feeder_name, pastadesaida=pastadesaida)
 
         return DU_meses, file_name
-        #return load_, file_name
 
     def create_df_loads(self,tip_dia,mes,crvcarga,prop,fc,kw,energia):
         global df_energ_load

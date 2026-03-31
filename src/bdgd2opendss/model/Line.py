@@ -417,16 +417,77 @@ class Line:
 
     @staticmethod
     def create_line_from_json(json_data: Any, dataframe: gpd.geodataframe.GeoDataFrame, entity: str, pastadesaida:str=""):
+        from collections import defaultdict
+        import os
+        from bdgd2opendss.core.Utils import create_output_folder, get_cod_year_bdgd, get_configuration, create_output_file
 
-        lines = []
+        lines_no_trafo = []
+        lines_by_trafo = defaultdict(list)
+        
         line_config = json_data['elements']['Line'][entity]
+        feeder_name = ""
+
         progress_bar = tqdm(dataframe.iterrows(), total=len(dataframe), desc="Line", unit=" lines", ncols=100)
         for _, row in progress_bar:
             line_ = Line._create_line_from_row(line_config, row)
+            if not feeder_name:
+                feeder_name = line_.feeder
+                
+            trafo = str(getattr(line_, "transformer", "")).strip()
+            if trafo.lower() in ["nan", "none", "<na>"]:
+                trafo = ""
+            
+            # Identify purely BT lines. The entity name maps to config keys like 'SSDBT', 'RAMLIG', 'UNSEBT'
+            is_bt_line = ("BT" in entity or entity == "RAMLIG")
+            
+            if trafo and is_bt_line:
+                lines_by_trafo[trafo].append(line_)
+            else:
+                lines_no_trafo.append(line_)
 
-            lines.append(line_)
             progress_bar.set_description(f"Processing Line {entity} {_ + 1}")
 
-        file_name = create_output_file(lines, line_config["arquivo"], feeder=line_.feeder, output_folder=pastadesaida)
+        if feeder_name and lines_by_trafo:
+            base_output_dir = create_output_folder(feeder=feeder_name, output_folder=pastadesaida)
+            file_name_cfg = line_config.get("arquivo", "Line")
+            
+            if not hasattr(Line, "_session_files"):
+                Line._session_files = set()
+                
+            for trafo, trafo_lines in lines_by_trafo.items():
+                
+                trafo_folder = f"TR_{trafo}"
+                trafo_dir = os.path.join(base_output_dir, trafo_folder)
+                os.makedirs(trafo_dir, exist_ok=True)
+                
+                file_name = f'{file_name_cfg}_{trafo_folder}'
+                full_name = f'{file_name}_{get_cod_year_bdgd(typ="yearcod")}_{feeder_name}_{get_configuration()}.dss'
+                file_path = os.path.join(trafo_dir, full_name)
+                
+                if file_path not in Line._session_files:
+                    mode = "w"
+                    Line._session_files.add(file_path)
+                    needs_redirect = True
+                else:
+                    mode = "a"
+                    needs_redirect = False
+                
+                with open(file_path, mode) as f_trafo:
+                    for ld in trafo_lines:
+                        # Full_string might return empty if the line is isolated (""), filter empty strings
+                        string_val = ld.full_string()
+                        if string_val:
+                            f_trafo.write(string_val + "\n")
+                
+                rel_path = f"{trafo_folder}/{full_name}"
+                if needs_redirect:
+                    lines_no_trafo.append(f'Redirect "{rel_path}"')
 
-        return lines, file_name
+        file_name = create_output_file(
+            object_list=lines_no_trafo, 
+            file_name=line_config["arquivo"], 
+            feeder=feeder_name, 
+            output_folder=pastadesaida
+        ) if feeder_name else ""
+
+        return lines_no_trafo, file_name

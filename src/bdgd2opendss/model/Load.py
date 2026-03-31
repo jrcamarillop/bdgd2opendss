@@ -657,7 +657,7 @@ class Load:
                             elif i == "DO":
                                 DO_meses[mes].append(new_load)
 
-            progress_bar.set_description(f"Processing load {entity} {_ + 1}")
+
 
         if feeder_name:
             base_output_dir = create_output_folder(feeder=feeder_name, output_folder=pastadesaida)

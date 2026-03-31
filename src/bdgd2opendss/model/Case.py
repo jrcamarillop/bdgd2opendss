@@ -178,10 +178,11 @@ class Case:
     def output_master(self, file_names, tip_dia="", mes=""):
 
         master = "clear\n"
-        y = create_voltage_bases(Transformer.dict_kv()) #cria lista de tensões de base na baixa tensão
+        y = create_voltage_bases(Transformer.dict_kv()) # line-to-line voltages
+        y.extend(create_voltage_bases(Transformer.dict_phase_kv())) # phase-to-neutral voltages
         y.sort()
         y.append(Circuit.kvbase())
-        voltagebases = " ".join(str(z) for z in set(y))
+        voltagebases = " ".join(str(z) for z in sorted(set(y)))
         for i in file_names:
             if i[:2] == "GD":
                 master = master + f'!Redirect "{i}"\n'

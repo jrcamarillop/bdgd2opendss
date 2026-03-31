@@ -33,6 +33,7 @@ dict_phase_kv = {}
 dict_pot_tr = {}
 list_dsativ = []
 list_posse = []
+list_reactors = []
 output = ""
 @dataclass
 class Transformer:
@@ -288,6 +289,13 @@ class Transformer:
 =
         """
 
+        # Enforce realistic phase constraints for Open-Delta and asymmetrical multi-tank banks
+        # Single-phase components imported under a 'Trifásico' tag will default to phases=3 if uncorrected, 
+        # causing OpenDSS to short unbalanced coils to the neutral matrix.
+        actual_phases = [n for n in self.bus1_nodes.split('.') if n in ['1', '2', '3']]
+        if len(actual_phases) > 0:
+            self.phases = len(actual_phases)
+
         if self.conn_p == 'Wye' and (int(self.phases) == 1 or '4' in self.bus1_nodes):
             if self.kv2 > 1: #TODO se já não for tensão de linha*** verificar esse se
                 self.kv1 = f'{float(self.kv1)/numpy.sqrt(3):.13f}'
@@ -331,10 +339,7 @@ class Transformer:
             elif '4' in self.bus3_nodes or self.bus2_nodes == '1.2.4':#verificar essa condição aqui no geoperdas
                 kvs = f'{self.kv1} {self.kv2/2} {self.kv2/2}'
                 kvas = f'{self.kvas} {self.kvas} {self.kvas}'
-                if self.bus3_nodes != "1.4" and self.bus3_nodes != "2.4" and self.bus3_nodes != "3.4":
-                    buses = f'"{self.bus1}.{self.bus1_nodes}" "{self.bus2}.{self.bus2_nodes}" "{self.bus2}" '
-                else:
-                    buses = f'"{self.bus1}.{self.bus1_nodes}" "{self.bus2}.{self.bus2_nodes}" "{self.bus2}.{self.bus3_nodes}" '
+                buses = f'"{self.bus1}.{self.bus1_nodes}" "{self.bus2}.{self.bus2_nodes}" "{self.bus2}.{self.bus3_nodes}" '
                 conns = f'{self.conn_p} {self.conn_s} {self.conn_t}'
                 self.windings = 3
             elif len(self.bus3_nodes) == 0 and (len(self.bus2_nodes) == 3 or self.bus2_nodes == '1.2.3'):
@@ -435,16 +440,22 @@ class Transformer:
             noloadloss = float("nan")
             pass
 
-        return (f'{self._coment}New \"Transformer.TRF_{self.transformer}" phases={self.phases} '
+        output_trafo = (f'{self._coment}New \"Transformer.TRF_{self.transformer}" phases={self.phases} '
             f'windings={self.windings} '
             f'buses=[{self.buses}] '
             f'conns=[{self.conns}] '
             f'kvs=[{self.kvs}] '
             f'{taps} '
             f'kvas=[{self.kvas}] '
-            f'%loadloss={loadloss} %noloadloss={noloadloss}\n'
-            f'{self._coment}{self.pattern_reactor()}\n'
-            f'{MRT}')
+            f'%loadloss={loadloss} %noloadloss={noloadloss}\n')
+
+        trafo_id = self.transformer[:-1] if self.transformer[-1].isalpha() else self.transformer
+        if trafo_id not in list_reactors:
+            list_reactors.append(trafo_id)
+            return output_trafo + (f'{self._coment}{self.pattern_reactor()}\n'
+                                   f'{MRT}')
+        else:
+            return output_trafo + f'{MRT}'
     def __repr__(self):
         if self.sit_ativ == 'DS':
             return("")
@@ -589,6 +600,16 @@ class Transformer:
                 setattr(transformer_, f"_{mapping_key}", row[mapping_value])
 
     @staticmethod
+    def dict_kv():
+        global dicionario_kv
+        return dicionario_kv
+
+    @staticmethod
+    def dict_phase_kv():
+        global dict_phase_kv
+        return dict_phase_kv
+
+    @staticmethod
     def _process_calculated(transformer_, value, row):
         """
         Static method to process the calculated mapping configuration for a transformer object.
@@ -635,6 +656,7 @@ class Transformer:
     @staticmethod
     def create_transformer_from_json(json_data: Any, dataframe: gpd.geodataframe.GeoDataFrame, pastadesaida: str = ""):
         global output
+        list_reactors.clear()
         transformers = []
         transformer_config = json_data['elements']['Transformer']['UNTRMT']
         output = pastadesaida
@@ -643,7 +665,6 @@ class Transformer:
         for _, row in progress_bar:
             transformer_ = Transformer._create_transformer_from_row(transformer_config, row)
             transformers.append(transformer_)
-            progress_bar.set_description(f"Processing transformer {_ + 1}")
 
 
         file_name = create_output_file(transformers, transformer_config["arquivo"], feeder=transformer_.feeder, output_folder=pastadesaida)

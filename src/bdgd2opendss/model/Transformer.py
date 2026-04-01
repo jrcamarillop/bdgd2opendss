@@ -31,6 +31,7 @@ dicionario_kv = {}
 dicionario_kv_pri = {}
 dict_phase_kv = {}
 dict_pot_tr = {}
+dict_available_phases = {}
 list_dsativ = []
 list_posse = []
 list_reactors = []
@@ -514,6 +515,13 @@ class Transformer:
         return(dicionario_kv)
 
     @staticmethod
+    def normalize_trafo_id(transformer_id: str) -> str:
+        """Standardizes transformer ID normalization for lookups."""
+        if not transformer_id or not isinstance(transformer_id, str):
+            return str(transformer_id)
+        return transformer_id[:-1] if transformer_id[-1].isalpha() else transformer_id
+
+    @staticmethod
     def list_dsativ():
         return(list_dsativ)
 
@@ -557,11 +565,14 @@ class Transformer:
         for mapping_key, mapping_value in value.items():
             setattr(transformer_, f"_{mapping_key}", row[mapping_value])
             if mapping_key == "transformer":#modificação - 08/08
-                Transformer.sec_line_kv(transformer=row[mapping_value][:-1],kv2=getattr(transformer_,"kv2"))
+                id_tr = Transformer.normalize_trafo_id(row[mapping_value])
+                Transformer.sec_line_kv(transformer=id_tr,kv2=getattr(transformer_,"kv2"))
             if mapping_key == "sit_ativ" and row[mapping_value] == "DS":
-                list_dsativ.append(getattr(transformer_, f'_transformer')[:-1])
+                id_tr = Transformer.normalize_trafo_id(getattr(transformer_, f'_transformer'))
+                list_dsativ.append(id_tr)
             if mapping_key == "posse" and row[mapping_value] != "PD":
-                list_posse.append(getattr(transformer_, f'_transformer')[:-1])
+                id_tr = Transformer.normalize_trafo_id(getattr(transformer_, f'_transformer'))
+                list_posse.append(id_tr)
 
     @staticmethod
     def _process_indirect_mapping(transformer_, value, row):
@@ -591,11 +602,17 @@ class Transformer:
                 param_value = row[param_name]
                 setattr(transformer_, f"_{mapping_key}", function_(str(param_value)))
                 if mapping_key == 'bus3_nodes':
-                    Transformer.sec_phase_kv(getattr(transformer_, f'_transformer')[:-1],getattr(transformer_, f'_kv2'),getattr(transformer_, f'_bus2_nodes'),function_(str(param_value)),tip_trafo=getattr(transformer_,'_Tip_Lig'))
+                    id_tr = Transformer.normalize_trafo_id(getattr(transformer_, f'_transformer'))
+                    Transformer.sec_phase_kv(id_tr,getattr(transformer_, f'_kv2'),getattr(transformer_, f'_bus2_nodes'),function_(str(param_value)),tip_trafo=getattr(transformer_,'_Tip_Lig'))
+                    Transformer.register_available_phases(id_tr, function_(str(param_value)), tip_trafo=getattr(transformer_, '_Tip_Lig'))
                 if mapping_key == 'kvas': #settings - limitar cargas BT (potencia atv do trafo): cria dicionário de trafos/potências
-                    Transformer.dict_pot_tr(getattr(transformer_, f'_transformer')[:-1],function_(str(param_value)))
+                    id_tr = Transformer.normalize_trafo_id(getattr(transformer_, f'_transformer'))
+                    Transformer.dict_pot_tr(id_tr,function_(str(param_value)))
                 if mapping_key == 'kv1':
                     dicionario_kv_pri[getattr(transformer_, f'_transformer')] = function_(str(param_value))
+                if mapping_key == 'bus2_nodes':
+                    id_tr = Transformer.normalize_trafo_id(getattr(transformer_, f'_transformer'))
+                    Transformer.register_available_phases(id_tr, function_(str(param_value)), tip_trafo=getattr(transformer_, '_Tip_Lig'))
             else:
                 setattr(transformer_, f"_{mapping_key}", row[mapping_value])
 
@@ -603,6 +620,70 @@ class Transformer:
     def dict_kv():
         global dicionario_kv
         return dicionario_kv
+
+    @staticmethod
+    def dict_available_phases_data():
+        global dict_available_phases
+        return dict_available_phases
+
+    @staticmethod
+    def register_available_phases(transformer_id, bus2_nodes, tip_trafo=None):
+        global dict_available_phases
+        
+        # 1. Parse current nodes
+        current_nodes = [int(n) for n in bus2_nodes.split('.') if n.isdigit()]
+
+        # 2. Accumulate ALL nodes seen for this transformer ID
+        # We store the raw nodes set in the dict first to build the full picture
+        trafo_data = dict_available_phases.setdefault(transformer_id, {'all_nodes': set(), 'tip_trafo': tip_trafo})
+        if tip_trafo:
+            trafo_data['tip_trafo'] = tip_trafo # Keep the last seen type (usually consistent)
+
+        for n in current_nodes:
+            trafo_data['all_nodes'].add(n)
+
+        all_nodes = trafo_data['all_nodes']
+        
+        # 3. Identify roles
+        neutral_node = 4 if 4 in all_nodes else (0 if 0 in all_nodes else None)
+        hot_nodes = sorted([n for n in all_nodes if n in [1, 2, 3]])
+        
+        # 5. Generate options based on inferred connectivity
+        available = {
+            'single': [],
+            'double': []
+        }
+        
+        # Every hot node paired with neutral is a single-phase option
+        if neutral_node is not None:
+            for p in hot_nodes:
+                available['single'].append(f"{p}.{neutral_node}")
+        
+        # Every pair of hot nodes is a double-phase option
+        if len(hot_nodes) >= 2:
+            import itertools
+            # Standard pairs for 3-phase systems
+            if len(hot_nodes) == 3:
+                pairs = [(1, 2), (2, 3), (3, 1)]
+            else:
+                pairs = list(itertools.combinations(hot_nodes, 2))
+                
+            for p1, p2 in pairs:
+                pair_str = f"{p1}.{p2}"
+                available['double'].append(pair_str)
+                if neutral_node is not None:
+                    available['double'].append(f"{pair_str}.{neutral_node}")
+        
+        # 6. Store processed options
+        trafo_data['single'] = sorted(list(set(available['single'])))
+        trafo_data['double'] = sorted(list(set(available['double'])))
+        
+        # Diagnostic logging
+        try:
+            with open("load_balancing_debug.log", "a") as log:
+                log.write(f"[REGISTER] Trafo: {transformer_id}, Tip: {tip_trafo}, CombinedNodes: {sorted(list(all_nodes))}, Single: {trafo_data['single']}, Double: {trafo_data['double']}\n")
+        except:
+            pass
 
     @staticmethod
     def dict_phase_kv():

@@ -619,10 +619,77 @@ class Load:
         crv_dataframe = Load.compute_pre_kw(crv_dataframe)
 
         feeder_name = ""
+        transformer_load_balance_state = {}
 
         progress_bar = tqdm(dataframe.iterrows(), total=len(dataframe), desc="Load", unit=" loads", ncols=100)
         for _, row in progress_bar:
             load_ = Load._create_load_from_row(load_config, row, entity, _)
+            
+            # Load balancing for BT loads
+            if settings.blnBalancCargasBT and ("MT" not in entity):
+                trafo = str(getattr(load_, "transformer", "")).strip()
+                if trafo and trafo.lower() not in ["nan", "none", "<na>"]:
+                    trafo_id = Transformer.normalize_trafo_id(trafo)
+                    available = Transformer.dict_available_phases_data().get(trafo_id)
+                    
+                    # Diagnostic logging
+                    log_entry = f"[LOOKUP] Load: {load_.load}, Phase: {load_.phases}, BusNodes: {load_.bus_nodes}, TrafoID: {trafo_id}, Available: {'FOUND' if available else 'NOT FOUND'}"
+                    
+                    if available:
+                        # Parse nodes from load's bus_nodes
+                        load_nodes = [int(n) for n in str(load_.bus_nodes).split('.') if n.isdigit()]
+                        hot_load_nodes = [n for n in load_nodes if n in [1, 2, 3]]
+                        has_neutral = any(n in load_nodes for n in [0, 4]) and load_.conn != 'Delta'
+                        
+                        is_single = len(hot_load_nodes) == 1
+                        is_double = len(hot_load_nodes) == 2
+
+                        # Get available options (Single/Double)
+                        single_options = list(available.get('single', []))
+                        double_options = list(available.get('double', []))
+                        tip_trafo = available.get('tip_trafo', '')
+
+                        # Leg Inference for Split-Phase (MT)
+                        # If MT and only one leg found in data, infer the second leg
+                        if tip_trafo == 'MT' and len(single_options) == 1:
+                            current_leg = int(single_options[0].split('.')[0])
+                            neutral = single_options[0].split('.')[1]
+                            if current_leg == 1:
+                                single_options.append(f"2.{neutral}")
+                            elif current_leg == 2:
+                                single_options.append(f"1.{neutral}")
+                            elif current_leg == 3:
+                                single_options.append(f"1.{neutral}")
+                            single_options = sorted(list(set(single_options)))
+
+                        balance_state = transformer_load_balance_state.setdefault(trafo_id, {})
+                        
+                        if is_single and single_options:
+                            chosen = min(single_options, key=lambda p: balance_state.get(p, 0))
+                            load_.bus_nodes = chosen
+                            balance_state[chosen] = balance_state.get(chosen, 0) + 1
+                            log_entry += f" -> BALANCED (Single) to {chosen}"
+                        elif is_double and double_options:
+                            # Identify options with/without neutral based on original
+                            options = [o for o in double_options if ((".4" in o or ".0" in o) == has_neutral)]
+                            if not options: # Fallback if neutral preference can't be met
+                                options = double_options
+                            
+                            if options:
+                                chosen = min(options, key=lambda p: balance_state.get(p, 0))
+                                load_.bus_nodes = chosen
+                                balance_state[chosen] = balance_state.get(chosen, 0) + 1
+                                log_entry += f" -> BALANCED (Double) to {chosen}"
+                            else:
+                                log_entry += " -> SKIPPED (No valid pair options)"
+                        else:
+                            log_entry += f" -> SKIPPED (is_single={is_single}, is_double={is_double})"
+                    
+                    try:
+                        with open("load_balancing_debug.log", "a") as log:
+                            log.write(log_entry + "\n")
+                    except:
+                        pass
             if not feeder_name:
                 feeder_name = load_.feeder
 
@@ -752,6 +819,7 @@ class Load:
             df_energ_load.at[self.load, 'CodAlim'] = self.feeder
             df_energ_load.at[self.load, 'CodTrafo'] = self.transformer
         
+    @staticmethod
     def export_df_loads(output,feeder,data_bdgd,cod_bdgd):
         global df_energ_load
         global df_energ_loadmt
@@ -780,6 +848,7 @@ class Load:
         df_energ_mtnt.to_csv(path_file_mtnt,encoding='utf-8', decimal='.',sep=';',index=False)
         return(print('Tabela de perdas técnicas criada'))
         
+    @staticmethod
     def create_csv_dias(output_folder,feeder):
         global df_dias
         df_dias = pd.DataFrame(columns=['Mês','DU','SA','DO'])
@@ -791,5 +860,3 @@ class Load:
 
         path_file = output_folder + r"/csv_files" + r"/contagem_dias" + f"_{feeder}.csv"
         df_dias.to_csv(path_file,encoding='utf-8', decimal='.',sep=';', index=False)
-
-                

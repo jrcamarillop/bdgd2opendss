@@ -286,8 +286,34 @@ class Line:
     def full_string(self) -> str:
         
         if f'{self.prefix_name}_{self.line}' in elem_isolados(): #remove as linhas isoladas
-        #if "BT" in self.prefix_name and (self.transformer in list_dsativ or self.transformer not in dicionario_kv.keys()):
             return("")
+
+        # 1. Phase Promotion for Load Balancing
+        if settings.blnBalancCargasBT:
+            # Re-identify BT lines (SSDBT, RAMLIG, UNSEBT usually mapped through prefix)
+            is_bt_line = (self.prefix_name in ["SBT", "RBT", "SDBT", "RAMLIG"]) or ("BT" in (self.entity or ""))
+            
+            if is_bt_line and self.transformer:
+                trafo_id = Transformer.normalize_trafo_id(self.transformer)
+                available = Transformer.dict_available_phases_data().get(trafo_id)
+                
+                if available and 'all_nodes' in available:
+                    all_nodes = available['all_nodes']
+                    hot_nodes = [n for n in all_nodes if n in [1, 2, 3]]
+                    neutral_node = 4 if 4 in all_nodes else (0 if 0 in all_nodes else None)
+                    
+                    if len(hot_nodes) > self.phases:
+                        # Promote nodes to full transformer capability
+                        self.phases = len(hot_nodes)
+                        
+                        # Rebuild bus_nodes suffix (e.g. 1.2.4)
+                        nodes_list = sorted(list(hot_nodes))
+                        if neutral_node is not None:
+                            nodes_list.append(neutral_node)
+                        self.bus_nodes = ".".join(map(str, nodes_list))
+                        
+                        # Synchronize LineCode suffix (e.g. _1 -> _2)
+                        self.suffix_linecode = str(self.phases)
 
         if self.prefix_name == "CMT" or self.prefix_name == "CBT":
             return self.pattern_switch()

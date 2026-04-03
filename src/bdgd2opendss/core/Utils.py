@@ -908,3 +908,111 @@ def list_subs(df,output_path):
     df_sub = df[['COD_ID','SUB']]
     df_sub.to_csv(file_path, index=False, encoding='utf-8')
 
+def merge_series_lines(dataframe_dict: dict, feeder: str):
+    """
+    Merge lines in series that share a common bus with no other connections and same properties.
+    """
+    if not settings.blnMergeSeriesLines:
+        return
+
+    # Standard names for entities
+    if settings.TipoBDGD:
+        ucbt = "UCBT"
+        ucmt = "UCMT"
+        ugbt = "UGBT"
+        ugmt = "UGMT"
+    else:
+        ucbt = "UCBT_tab"
+        ucmt = "UCMT_tab"
+        ugbt = "UGBT_tab"
+        ugmt = "UGMT_tab"
+
+    # Entities that can be merged (lines)
+    mergeable_entities = {'SSDMT', 'SSDBT', 'RAMLIG'}
+    
+    # Obstacles (cannot be bypassed)
+    obstacle_entities = {'UNSEMT', 'UNSEBT', 'UNTRMT', 'UNREMT', 'PIP'}
+    obstacle_entities.update({ucbt, ucmt, ugbt, ugmt})
+
+    # Build a map of PAC -> list of (entity, index, linecode, phases)
+    pac_map = {}
+
+    def add_to_pac(pac, entity, index, linecode=None, phases=None):
+        if not pac or pd.isna(pac) or str(pac).strip() == "": return
+        if pac not in pac_map:
+            pac_map[pac] = []
+        pac_map[pac].append({'entity': entity, 'index': index, 'linecode': linecode, 'phases': phases})
+
+    for entity in mergeable_entities.union(obstacle_entities):
+        if entity in dataframe_dict:
+            gdf = dataframe_dict[entity]['gdf']
+            if 'CTMT' in gdf.columns:
+                df = gdf.query("CTMT == @feeder")
+                for idx, row in df.iterrows():
+                    linecode = row.get('TIP_CND')
+                    phases = row.get('FAS_CON')
+                    
+                    pacs = []
+                    if 'PAC_1' in row: pacs.append(row['PAC_1'])
+                    if 'PAC_2' in row: pacs.append(row['PAC_2'])
+                    if 'PAC' in row: pacs.append(row['PAC'])
+                    
+                    for p in pacs:
+                        add_to_pac(p, entity, idx, linecode, phases)
+
+    # Identify PACs that connect exactly two lines and nothing else
+    merge_points = [] # list of (pac, id1, id2)
+    
+    for pac, elements in pac_map.items():
+        if len(elements) == 2:
+            e1, e2 = elements[0], elements[1]
+            if e1['entity'] in mergeable_entities and e2['entity'] in mergeable_entities:
+                if e1['entity'] == e2['entity'] and e1['linecode'] == e2['linecode'] and e1['phases'] == e2['phases']:
+                    merge_points.append((pac, (e1['entity'], e1['index']), (e2['entity'], e2['index'])))
+
+    if not merge_points:
+        return
+
+    # Use a graph to find chains of lines to merge
+    merge_graph = nx.Graph()
+    for pac, id1, id2 in merge_points:
+        merge_graph.add_edge(id1, id2, pac=pac)
+
+    chains = list(nx.connected_components(merge_graph))
+    total_merged = 0
+    
+    for chain in chains:
+        # Each chain is a set of (entity, index)
+        chain_list = list(chain)
+        # Find end PACs of the chain
+        all_segment_pacs = []
+        for eid, idx in chain:
+            row = dataframe_dict[eid]['gdf'].loc[idx]
+            if 'PAC_1' in row: all_segment_pacs.append(row['PAC_1'])
+            if 'PAC_2' in row: all_segment_pacs.append(row['PAC_2'])
+        
+        # End PACs occur exactly once in the segments list
+        final_pacs = [p for p in set(all_segment_pacs) if all_segment_pacs.count(p) == 1]
+        
+        if len(final_pacs) == 2:
+            # We can merge this chain
+            keep_id = chain_list[0]
+            remove_ids = chain_list[1:]
+            
+            total_comp = 0
+            for eid, idx in chain:
+                total_comp += dataframe_dict[eid]['gdf'].loc[idx, 'COMP']
+            
+            # Update the 'keep' line
+            dataframe_dict[keep_id[0]]['gdf'].at[keep_id[1], 'COMP'] = total_comp
+            dataframe_dict[keep_id[0]]['gdf'].at[keep_id[1], 'PAC_1'] = final_pacs[0]
+            dataframe_dict[keep_id[0]]['gdf'].at[keep_id[1], 'PAC_2'] = final_pacs[1]
+            
+            # Remove others
+            for rid in remove_ids:
+                dataframe_dict[rid[0]]['gdf'].drop(rid[1], inplace=True)
+            
+            total_merged += len(remove_ids)
+
+    print(f"Merged {total_merged} series line segments in feeder {feeder}.")
+

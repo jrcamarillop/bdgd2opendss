@@ -230,6 +230,9 @@ class Circuit:
         return circuits, file_name
     
     def create_df_circuit(dataframe,kv,pu,feeder,output_folder,codedata):
+        def _cell(col: str) -> float:
+            return float(dataframe[col].iloc[0])
+
         colunas = ['CodBase','CodAlim','TenNom_kV','TenOpe_pu','PerdTecnMed_MWh','PerdTecnA3a_MWh','PerdTecnA4_MWh', "PerdTecnA4A3a_MWh",
                    'PerdTecnB_MWh','PerdTecnA3a_A4_MWh','PerdTecnA3a_B_MWh','PerdTecnB_A3a_MWh','PerdTecnA4_B_MWh','PerdTecnB_A4_MWh']
         df = pd.DataFrame(columns=colunas)
@@ -237,30 +240,32 @@ class Circuit:
         df.at[1,'CodAlim'] = feeder
         df.at[1,'TenNom_kV'] = kv
         df.at[1,'TenOpe_pu'] = pu
-        df.at[1,'PerdTecnMed_MWh'] = float(dataframe[f"PERD_MED"])/1000
+        df.at[1,'PerdTecnMed_MWh'] = _cell("PERD_MED") / 1000
         if settings.TipoBDGD:
-            df.at[1,'PerdTecnA3a_MWh'] = float(dataframe[f"PERD_A3A"])/1000
-            df.at[1,'PerdTecnA3a_B_MWh'] = float(dataframe[f"PERD_A3A_B"])/1000
-            df.at[1,'PerdTecnB_A3a_MWh'] = float(dataframe[f"PERD_B_A3A"])/1000
-            df.at[1,'PerdTecnA4A3a_MWh'] = float(dataframe[f"PERD_A4A3A"])/1000
-            df.at[1,'PerdTecnA3a_A4_MWh'] = float(dataframe[f"PERD_A3AA4"])/1000
+            df.at[1,'PerdTecnA3a_MWh'] = _cell("PERD_A3A") / 1000
+            df.at[1,'PerdTecnA3a_B_MWh'] = _cell("PERD_A3A_B") / 1000
+            df.at[1,'PerdTecnB_A3a_MWh'] = _cell("PERD_B_A3A") / 1000
+            df.at[1,'PerdTecnA4A3a_MWh'] = _cell("PERD_A4A3A") / 1000
+            df.at[1,'PerdTecnA3a_A4_MWh'] = _cell("PERD_A3AA4") / 1000
         else:
-            df.at[1,'PerdTecnA3a_MWh'] = float(dataframe[f"PERD_A3a"])/1000
-            df.at[1,'PerdTecnA3a_B_MWh'] = float(dataframe[f"PERD_A3a_B"])/1000
-            df.at[1,'PerdTecnB_A3a_MWh'] = float(dataframe[f"PERD_B_A3a"])/1000
-            df.at[1,'PerdTecnA4A3a_MWh'] = float(dataframe[f"PERD_A4A3a"])/1000
-            df.at[1,'PerdTecnA3a_A4_MWh'] = float(dataframe[f"PERD_A3aA4"])/1000
-        df.at[1,'PerdTecnA4_MWh'] = float(dataframe[f"PERD_A4"])/1000
-        df.at[1,'PerdTecnB_MWh'] = float(dataframe[f"PERD_B"])/1000
-        df.at[1,'PerdTecnA4_B_MWh'] = float(dataframe[f"PERD_A4_B"])/1000
-        df.at[1,'PerdTecnB_A4_MWh'] = float(dataframe[f"PERD_B_A4"])/1000
+            df.at[1,'PerdTecnA3a_MWh'] = _cell("PERD_A3a") / 1000
+            df.at[1,'PerdTecnA3a_B_MWh'] = _cell("PERD_A3a_B") / 1000
+            df.at[1,'PerdTecnB_A3a_MWh'] = _cell("PERD_B_A3a") / 1000
+            df.at[1,'PerdTecnA4A3a_MWh'] = _cell("PERD_A4A3a") / 1000
+            df.at[1,'PerdTecnA3a_A4_MWh'] = _cell("PERD_A3aA4") / 1000
+        df.at[1,'PerdTecnA4_MWh'] = _cell("PERD_A4") / 1000
+        df.at[1,'PerdTecnB_MWh'] = _cell("PERD_B") / 1000
+        df.at[1,'PerdTecnA4_B_MWh'] = _cell("PERD_A4_B") / 1000
+        df.at[1,'PerdTecnB_A4_MWh'] = _cell("PERD_B_A4") / 1000
 
         for month in range(1,13):
-            df.at[1,f"EnerCirc{month:02d}_MWh"] = float(dataframe[f"ENE_{month:02d}"])/1000
-            df.at[1,f"PerdCirc{month:02d}_MWh"] = float(dataframe[f"PNTMT_{month:02d}"])/1000
+            df.at[1,f"EnerCirc{month:02d}_MWh"] = _cell(f"ENE_{month:02d}") / 1000
+            df.at[1,f"PerdCirc{month:02d}_MWh"] = _cell(f"PNTMT_{month:02d}") / 1000
             try:
-                df.at[1,f"PropPerdNTecnMT{month:02d}_pu"] = float(dataframe[f"PNTMT_{month:02d}"])/(float(dataframe[f"PNTBT_{month:02d}"])+float(dataframe[f"PNTMT_{month:02d}"]))
-                df.at[1,f"PropPerdNTecnBT{month:02d}_pu"] = float(dataframe[f"PNTBT_{month:02d}"])/(float(dataframe[f"PNTBT_{month:02d}"])+float(dataframe[f"PNTMT_{month:02d}"]))
+                pntmt = _cell(f"PNTMT_{month:02d}")
+                pntbt = _cell(f"PNTBT_{month:02d}")
+                df.at[1,f"PropPerdNTecnMT{month:02d}_pu"] = pntmt / (pntbt + pntmt)
+                df.at[1,f"PropPerdNTecnBT{month:02d}_pu"] = pntbt / (pntbt + pntmt)
             except ZeroDivisionError:
                 df.at[1,f"PropPerdNTecnMT{month:02d}_pu"] = 0
                 df.at[1,f"PropPerdNTecnBT{month:02d}_pu"] = 0

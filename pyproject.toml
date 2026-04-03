@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bdgd2opendss"
-version = "1.0.1"
+version = "1.1.0"
 description = "BDGD2OpenDSS converts BDGD data into OpenDSS models."
 readme = "README.md"
 license = {text = "MIT"}
@@ -38,7 +38,7 @@ dependencies = [
     "iniconfig==2.0.0; python_version < '3.12'",
     "munch==2.5.0; python_version < '3.12'",
     "numpy==1.24.2; python_version < '3.12'",
-    "packaging==23.0; python_version < '3.12'",
+    "packaging==24.0; python_version < '3.12'",
     "pandas==1.5.3; python_version < '3.12'",
     "pluggy>=1.0.0,<2.0.0; python_version < '3.12'",
     "pyproj==3.4.1; python_version < '3.12'",
@@ -125,24 +125,46 @@ dependencies = [
     "wheel==0.43.0; python_version >= '3.12' and python_version < '3.13'",
     "zict==3.0.0; python_version >= '3.12' and python_version < '3.13'",
 
-    # Python 3.13+ (from requirements_py313.txt)
-    "certifi==2025.11.12; python_version >= '3.13'",
-    "colorama==0.4.6; python_version >= '3.13'",
-    "geopandas==1.1.1; python_version >= '3.13'",
-    "holidays==0.84; python_version >= '3.13'",
-    "networkx==3.5; python_version >= '3.13'",
-    "numpy==2.3.4; python_version >= '3.13'",
-    "packaging==25.0; python_version >= '3.13'",
-    "pandas==2.3.3; python_version >= '3.13'",
-    "pyarrow==22.0.0; python_version >= '3.13'",
-    "pyogrio==0.11.1; python_version >= '3.13'",
-    "pyproj==3.7.2; python_version >= '3.13'",
-    "python-dateutil==2.9.0.post0; python_version >= '3.13'",
-    "pytz==2025.2; python_version >= '3.13'",
-    "shapely==2.1.2; python_version >= '3.13'",
-    "six==1.17.0; python_version >= '3.13'",
-    "tqdm==4.67.1; python_version >= '3.13'",
-    "tzdata==2025.2; python_version >= '3.13'",
+    # Python 3.13 only (from requirements_py313.txt)
+    "certifi==2025.11.12; python_version >= '3.13' and python_version < '3.14'",
+    "colorama==0.4.6; python_version >= '3.13' and python_version < '3.14'",
+    "geopandas==1.1.1; python_version >= '3.13' and python_version < '3.14'",
+    "holidays==0.84; python_version >= '3.13' and python_version < '3.14'",
+    "networkx==3.5; python_version >= '3.13' and python_version < '3.14'",
+    "numpy==2.3.4; python_version >= '3.13' and python_version < '3.14'",
+    "packaging==25.0; python_version >= '3.13' and python_version < '3.14'",
+    "pandas==2.3.3; python_version >= '3.13' and python_version < '3.14'",
+    "pyarrow==22.0.0; python_version >= '3.13' and python_version < '3.14'",
+    "pyogrio==0.11.1; python_version >= '3.13' and python_version < '3.14'",
+    "pyproj==3.7.2; python_version >= '3.13' and python_version < '3.14'",
+    "python-dateutil==2.9.0.post0; python_version >= '3.13' and python_version < '3.14'",
+    "pytz==2025.2; python_version >= '3.13' and python_version < '3.14'",
+    "shapely==2.1.2; python_version >= '3.13' and python_version < '3.14'",
+    "six==1.17.0; python_version >= '3.13' and python_version < '3.14'",
+    "tqdm==4.67.1; python_version >= '3.13' and python_version < '3.14'",
+    "tzdata==2025.2; python_version >= '3.13' and python_version < '3.14'",
+
+    # Python 3.14 (from requirements_py314.txt)
+    "certifi==2026.2.25; python_version >= '3.14'",
+    "colorama==0.4.6; python_version >= '3.14'",
+    "geopandas==1.1.3; python_version >= '3.14'",
+    "holidays==0.93; python_version >= '3.14'",
+    "iniconfig==2.3.0; python_version >= '3.14'",
+    "networkx==3.6.1; python_version >= '3.14'",
+    "numpy==2.4.3; python_version >= '3.14'",
+    "packaging==26.0; python_version >= '3.14'",
+    "pandas==3.0.1; python_version >= '3.14'",
+    "pluggy==1.6.0; python_version >= '3.14'",
+    "pyarrow==23.0.1; python_version >= '3.14'",
+    "Pygments==2.19.2; python_version >= '3.14'",
+    "pyogrio==0.12.1; python_version >= '3.14'",
+    "pyproj==3.7.2; python_version >= '3.14'",
+    "pytest==9.0.2; python_version >= '3.14'",
+    "python-dateutil==2.9.0.post0; python_version >= '3.14'",
+    "shapely==2.1.2; python_version >= '3.14'",
+    "six==1.17.0; python_version >= '3.14'",
+    "tqdm==4.67.3; python_version >= '3.14'",
+    "tzdata==2025.3; python_version >= '3.14'",
 ]
 requires-python = ">=3.11"
 keywords = ["OpenDSS", "Python", "Power Systems", "Distribution Systems", "Energy", "OpenDSS"]
@@ -156,6 +178,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering",
   "Topic :: Software Development :: Libraries :: Python Modules"
 ]

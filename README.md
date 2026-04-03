@@ -39,7 +39,7 @@ The easiest way to install `bdgd2opendss` is using pip:
 pip install bdgd2opendss
 ```
 
-The package supports Python 3.11, 3.12, and 3.13. Dependencies are automatically installed based on your Python version.
+The package supports Python 3.11, 3.12, 3.13, and 3.14. Dependencies are automatically installed based on your Python version.
 
 ### Install from Source
 
@@ -63,6 +63,7 @@ cd bdgd2opendss
 pip install -r requirements_py311.txt  # For Python 3.11
 pip install -r requirements_py312.txt  # For Python 3.12
 pip install -r requirements_py313.txt  # For Python 3.13
+pip install -r requirements_py314.txt  # For Python 3.14
 ```
 
 4. Install the package in editable mode:
@@ -98,7 +99,7 @@ If you use `bdgd2opendss` in your academic work, please reference it as follows:
 
 **APA Style:**
 
-    Radatz, P., & Contributors. (2024). bdgd2opendss: A BDGD to OpenDSS conversion tool (Version X.X.X) [Computer software]. GitHub. https://github.com/pauloradatz/bdgd2opendss
+    Radatz, P., & Contributors. (2024). bdgd2opendss: A BDGD to OpenDSS conversion tool (Version 1.1.0) [Computer software]. GitHub. https://github.com/pauloradatz/bdgd2opendss
 
 **BibTeX Entry:**
 
@@ -107,12 +108,12 @@ If you use `bdgd2opendss` in your academic work, please reference it as follows:
   author = {Paulo Radatz and Contributors},
   title = {bdgd2opendss: A BDGD to OpenDSS conversion tool},
   year = {2024},
-  version = {X.X.X},
+  version = {1.1.0},
   url = {https://github.com/pauloradatz/bdgd2opendss}
 }
 ```
 
-Please replace `X.X.X` with the version of the package you are using.
+If you use another release, substitute the version you installed.
 
 ## Contact
 

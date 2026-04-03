@@ -169,7 +169,10 @@ def create_output_file(object_list=[], file_name="", object_lists="", file_names
             with open(path, k) as file:
                 for string in object_list:
                     try:
-                        file.write(string.full_string() + "\n")
+                        if type(string) == str:
+                            file.write(string + "\n")
+                        else:
+                            file.write(string.full_string() + "\n")
 
                     except Exception as e:
                         print(f"An error occurred: {str(e)}")
@@ -333,7 +336,10 @@ def create_voltage_bases(dicionario_kv): #remover as tensões de secundário de 
     # TODO evitar tomar decisoes
     if len(dicionario_kv) > 0:
         for value in dicionario_kv.values():
-            if value >= 0.22:
+            if value >= 0.1:
+                lista.append(value)
+            elif value > 0 and value < 0.1:
+                # Still add it if it's a valid small voltage
                 lista.append(value)
             else:
                 ...
@@ -888,10 +894,10 @@ def seq_eletrica(dataframe: Optional[gpd.geodataframe.GeoDataFrame] = None, feed
 
 def get_substation(sub:Optional[str] = None):
     global substation
-    if sub == None or len(sub) == 0 or " " in sub:
+    if pd.isna(sub) or (isinstance(sub, str) and (len(sub) == 0 or " " in sub)):
         substation = "__"
     else:
-        substation = "__" + sub
+        substation = "__" + str(sub)
 
 def list_subs(df,output_path):
     if output_path == None:

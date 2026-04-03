@@ -11,7 +11,7 @@ include *.ipynb
 include *.txt
 include *.pdf
 
-include CHANGELOG.rst
+include CHANGELOG.md
 include LICENSE
 include README.md
 include *.py

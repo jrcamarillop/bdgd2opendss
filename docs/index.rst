@@ -11,7 +11,7 @@ Welcome to bdgd2opendss's documentation!
    modules
    contributing
    authors
-   history
+   changelog
 
 Indices and tables
 ==================

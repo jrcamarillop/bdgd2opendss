@@ -337,10 +337,10 @@ def create_voltage_bases(dicionario_kv): #remover as tensões de secundário de 
     if len(dicionario_kv) > 0:
         for value in dicionario_kv.values():
             if value >= 0.1:
-                lista.append(value)
+                lista.append(round(value, 3))
             elif value > 0 and value < 0.1:
                 # Still add it if it's a valid small voltage
-                lista.append(value)
+                lista.append(round(value, 3))
             else:
                 ...
         x=set(lista)

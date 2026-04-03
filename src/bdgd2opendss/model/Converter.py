@@ -257,9 +257,9 @@ def convert_tfascon_bus_sec(case):
 
 def convert_tfascon_bus_terc(case):
     switch_dict = {
-        'AN': '4.2',
-        'BN': '4.3',
-        'CN': '4.1',
+        'AN': '4.1',
+        'BN': '4.2',
+        'CN': '4.3',
         '0': 'XX'
     }
     return switch_dict.get(case, 'Invalid case')

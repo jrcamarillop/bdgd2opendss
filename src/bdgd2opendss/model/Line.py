@@ -440,7 +440,7 @@ class Line:
             # Identify purely BT lines. The entity name maps to config keys like 'SSDBT', 'RAMLIG', 'UNSEBT'
             is_bt_line = ("BT" in entity or entity == "RAMLIG")
             
-            if trafo and is_bt_line:
+            if trafo and is_bt_line and settings.blnSeparateLoadsByTransformer:
                 lines_by_trafo[trafo].append(line_)
             else:
                 lines_no_trafo.append(line_)

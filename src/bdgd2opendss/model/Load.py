@@ -642,7 +642,7 @@ class Load:
                         # Exclude only MT loads from being segregated by transformer automatically 
                         is_mt = ("MT" in entity)
                         
-                        if trafo and not is_mt:
+                        if trafo and not is_mt and settings.blnSeparateLoadsByTransformer:
                             if i == "DU":
                                 DU_meses_trafo[mes][trafo].append(new_load)
                             elif i == "SA":

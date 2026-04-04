@@ -180,6 +180,7 @@ class Case:
         master = "clear\n"
         y = create_voltage_bases(Transformer.dict_kv()) # line-to-line voltages
         y.extend(create_voltage_bases(Transformer.dict_phase_kv())) # phase-to-neutral voltages
+        y = list(set(y))
         y.sort()
         y.append(Circuit.kvbase())
         voltagebases = " ".join(str(z) for z in sorted(set(y)))

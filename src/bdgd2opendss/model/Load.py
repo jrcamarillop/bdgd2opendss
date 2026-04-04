@@ -333,10 +333,7 @@ class Load:
             else:
                 self.vminpu = settings.dblVPUMin 
 
-            if self.phases == '1' and self.conn == 'Wye':
-                kv = Transformer.sec_phase_kv(trload=self.transformer)      
-            else:
-                kv = Transformer.sec_line_kv(trload=self.transformer)
+            kv = Transformer.sec_line_kv(trload=self.transformer)
 
             return(kv,models)
         else:
@@ -684,6 +681,12 @@ class Load:
                                 log_entry += " -> SKIPPED (No valid pair options)"
                         else:
                             log_entry += f" -> SKIPPED (is_single={is_single}, is_double={is_double})"
+                    
+                    try:
+                        with open("load_balancing_debug.log", "a") as log:
+                            log.write(log_entry + "\n")
+                    except:
+                        pass
             if not feeder_name:
                 feeder_name = load_.feeder
 

@@ -269,26 +269,7 @@ class Transformer:
         self._posse = value
 
     def adapting_string_variables(self):
-
-        """
-        Format and adapt instance variables to create strings for OpenDSS input.
-
-        This method prepares and formats instance variables to be used as strings in OpenDSS input.
-        It constructs strings for voltage levels, bus definitions, kVA ratings, and tap settings based
-        on the values stored in the object.
-
-        Returns:
-            tuple of strings: A tuple containing the following formatted strings:
-                - kvs: A string representing voltage levels in kV for different phases.
-                - buses: A string representing bus definitions in OpenDSS format.
-                - kvas: A string representing kVA ratings
-                - taps: A string representing tap settings
-
-
-
-            Calling this method will format the variables and return a tuple of strings for OpenDSS input.
-=
-        """
+        """Standardizes voltages and identifiers for OpenDSS generation."""
 
         # Enforce realistic phase constraints for Open-Delta and asymmetrical multi-tank banks
         # Single-phase components imported under a 'Trifásico' tag will default to phases=3 if uncorrected, 
@@ -297,70 +278,85 @@ class Transformer:
         if len(actual_phases) > 0:
             self.phases = len(actual_phases)
 
-        if self.conn_p == 'Wye' and (int(self.phases) == 1 or '4' in self.bus1_nodes):
-            if self.kv2 > 1: #TODO se já não for tensão de linha*** verificar esse se
-                self.kv1 = f'{float(self.kv1)/numpy.sqrt(3):.13f}'
-                if self.conn_s == 'Wye':
-                    self.kv2 = f'{float(self.kv2)/numpy.sqrt(3):.13f}'
-            else:
-                self.kv1 = f'{float(Circuit.kvbase()/numpy.sqrt(3)):.13f}'
-        else:
-            if self.kv2 < 1:
-                self.kv1 = f'{float(Circuit.kvbase())}'
-            else:
-                if self.conn_s == 'Wye':
-                    self.kv2 = f'{float(self.kv2)/numpy.sqrt(3):.13f}'
+        # NOTE: Do NOT normalize self.transformer here. The BDGD uses trailing
+        # letter suffixes (e.g. 14339896A, 14339896B, 14339896C) to distinguish
+        # individual units of a multi-tank bank. Stripping those suffixes at
+        # output-generation time causes all units to collide into the same
+        # OpenDSS element name (duplicate element warning). Normalization for
+        # dictionary lookups is done in _process_direct_mapping /
+        # _process_indirect_mapping. Reactor deduplication in full_string
+        # already strips the trailing letter when needed.
 
-        if self.MRT == 1: #Condições usadas pela geoperdas de declarar as tensões de secundário e primário de TRAFO
+        # 3. Handle Voltage Bases
+        try:
+            v1_val = float(self.kv1)
+            v2_val = float(self.kv2)
+        except (ValueError, TypeError):
+            v1_val = float(Circuit.kvbase()) if hasattr(Circuit, 'kvbase') else 13.8
+            v2_val = 0.22
+
+        # Original logic: Use raw values directly
+        v1_final = v1_val
+        v2_final = v2_val
+
+        # 4. Handle MRT and Tip_Lig logic for OpenDSS string formatting
+        if self.MRT == 1: 
             if '4' in self.bus3_nodes or self.bus2_nodes == '1.2.4':
-                kvs = f'{self.kv1} {self.kv2/2} {self.kv2/2}'
+                # Center-tap split-phase (120/240V) -> 0.12 0.12
+                # Each half-winding = full secondary line voltage / 2
+                half_kv = round(v2_val / 2, 3)
+                kvs = f'{v1_final:.3f} {half_kv:.3f} {half_kv:.3f}'
                 kvas = f'{self.kvas} {self.kvas} {self.kvas}'
                 buses = f'"MRT_{self.bus1}TRF_{self.transformer}.{self.bus1_nodes}" "{self.bus2}.{self.bus2_nodes}" "{self.bus2}.{self.bus3_nodes}" '
                 conns = f'{self.conn_p} {self.conn_s} {self.conn_t}'
             elif len(self.bus3_nodes) == 0 and (len(self.bus2_nodes) == 3 or self.bus2_nodes == '1.2.3'):
-                if len(self.bus2_nodes) == 5 and '4' in self.bus2_nodes:
-                    kvs = f'{self.kv1} {self.kv2/numpy.sqrt(3):.13f}'
-                else:
-                    kvs = f'{self.kv1} {self.kv2}'
+                kvs = f'{v1_final:.3f} {v2_val:.3f}'
                 buses = f'"MRT_{self.bus1}TRF_{self.transformer}.{self.bus1_nodes}" "{self.bus2}.{self.bus2_nodes}"'
                 kvas = f'{self.kvas} {self.kvas}'
                 conns = f'{self.conn_p} {self.conn_s}'
             else:
-                kvs = f'{self.kv1} {self.kv2}'
+                kvs = f'{v1_final:.3f} {v2_final:.3f}'
                 buses = f'"MRT_{self.bus1}TRF_{self.transformer}.{self.bus1_nodes}" "{self.bus2}.{self.bus2_nodes}"'
                 kvas = f'{self.kvas} {self.kvas}'
                 conns = f'{self.conn_p} {self.conn_s}'
             MRT = self.pattern_MRT()
         else:
             if self.Tip_Lig == 'T':
-                kvs = f'{self.kv1} {self.kv2}'
+                kvs = f'{v1_final:.3f} {v2_final:.3f}'
                 buses = f'"{self.bus1}.{self.bus1_nodes}" "{self.bus2}.{self.bus2_nodes}"'
                 kvas = f'{self.kvas} {self.kvas}'
                 conns = f'{self.conn_p} {self.conn_s}'
-            elif '4' in self.bus3_nodes or self.bus2_nodes == '1.2.4':#verificar essa condição aqui no geoperdas
-                kvs = f'{self.kv1} {self.kv2/2} {self.kv2/2}'
+            elif '4' in self.bus3_nodes or self.bus2_nodes == '1.2.4':
+                # Standard Split-phase 120/240V -> 0.12 0.12
+                # Each half-winding = full secondary line voltage / 2
+                half_kv = round(v2_val / 2, 3)
+                kvs = f'{v1_final:.3f} {half_kv:.3f} {half_kv:.3f}'
                 kvas = f'{self.kvas} {self.kvas} {self.kvas}'
                 buses = f'"{self.bus1}.{self.bus1_nodes}" "{self.bus2}.{self.bus2_nodes}" "{self.bus2}.{self.bus3_nodes}" '
                 conns = f'{self.conn_p} {self.conn_s} {self.conn_t}'
                 self.windings = 3
-            elif len(self.bus3_nodes) == 0 and (len(self.bus2_nodes) == 3 or self.bus2_nodes == '1.2.3'):
-                if len(self.bus2_nodes) == 5 and '4' in self.bus2_nodes:
-                    kvs = f'{self.kv1} {self.kv2/numpy.sqrt(3):.13f}'
-                else:
-                    kvs = f'{self.kv1} {self.kv2}'
-                buses = f'"{self.bus1}.{self.bus1_nodes}" "{self.bus2}.{self.bus2_nodes}"'
-                kvas = f'{self.kvas} {self.kvas}'
-                conns = f'{self.conn_p} {self.conn_s}'
             else:
-                kvs = f'{self.kv1} {self.kv2}'
+                kvs = f'{v1_final:.3f} {v2_final:.3f}'
                 buses = f'"{self.bus1}.{self.bus1_nodes}" "{self.bus2}.{self.bus2_nodes}"'
                 kvas = f'{self.kvas} {self.kvas}'
                 conns = f'{self.conn_p} {self.conn_s}'
             MRT = ""
+
+        # Update final attributes for basic output
+        self.kv1 = f"{v1_final:.3f}"
+        self.kv2 = f"{v2_final:.3f}"
         kva = self.kvas
-        # kvas = ' '.join([f'{self.kvas}' for _ in range(self.windings)])
         taps = ' '.join([f'{self.tap}' for _ in range(self.windings)])
 
+        # Update dicionario_kv with the actual secondary winding voltage used in the DSS output.
+        id_tr = Transformer.normalize_trafo_id(self.transformer)
+        if self.Tip_Lig == 'MT':
+            # Split-phase: kv2 is total voltage, phase voltage for dict is kv2/2
+            actual_kv2 = v2_val / 2.0
+        else:
+            actual_kv2 = v2_val
+            
+        dicionario_kv[id_tr] = actual_kv2
 
         return kvs, buses, conns, kvas, taps, kva, MRT
 
@@ -453,6 +449,10 @@ class Transformer:
         trafo_id = self.transformer[:-1] if self.transformer[-1].isalpha() else self.transformer
         if trafo_id not in list_reactors:
             list_reactors.append(trafo_id)
+            
+        # Add grounding reactor for any Wye secondary (node 4 presence)
+        # Skip if it's a split-phase MRT as it has its own logic in MRT pattern
+        if '4' in self.bus2_nodes.split('.') and self.MRT == 0:
             return output_trafo + (f'{self._coment}{self.pattern_reactor()}\n'
                                    f'{MRT}')
         else:
@@ -474,27 +474,26 @@ class Transformer:
                 f'{MRT}'
                 f'{self.pattern_reactor()}')
 
+
     def sec_phase_kv(transformer:Optional[str] = None,kv2:Optional[float] = None,bus2_nodes:Optional[str] = None,bus3_nodes:Optional[str] = None, trload:Optional[str] = None, tip_trafo:Optional[str] = None): #retorna um dicionario de tensões de fase para cargas de acordo com critérios do Geoperdas
         if trload == None:
             # 1 - M, 2 - MT, 3 - B, 4 - T, 5 - DA, 6 - DF
-            #if bus3_nodes != 'XX' and (kv2 == 0.24 or kv2 == 0.44):
-            if bus3_nodes != 'XX' and tip_trafo == 'MT':
-                dict_phase_kv[transformer] = kv2/2
-            #elif kv2 != 0.38 and not ((len(bus2_nodes) == 5 and '4' in bus2_nodes) or (len(bus2_nodes) == 3 and '4' not in bus2_nodes)):
-            elif tip_trafo == 'M' or tip_trafo == 'B':
-                dict_phase_kv[transformer] = kv2
+            if tip_trafo == 'MT':
+                # Split-phase: declared voltage is double the phase-to-neutral (e.g. 240V -> 120V)
+                dict_phase_kv[transformer] = kv2 / 2.0
             else:
-                dict_phase_kv[transformer] = kv2/numpy.sqrt(3)
+                # Original logic: Use raw value directly
+                dict_phase_kv[transformer] = kv2
         else:
             try:
                 kv2 = dict_phase_kv[trload]
             except KeyError:
                 kv2 = float('nan')
             return(kv2)
-            # return(dict_phase_kv[trload])
 
-    def sec_line_kv(transformer:Optional[str] = None,kv2:Optional[float] = None, trload:Optional[str] = None): #retornar um dicionario de tensões de linha para a carga e acordo com critérios do Geoperdas
+    def sec_line_kv(transformer:Optional[str] = None,kv2:Optional[float] = None, trload:Optional[str] = None, tip_trafo:Optional[str] = None): #retornar um dicionario de tensões de linha para a carga e acordo com critérios do Geoperdas
         if trload == None:
+            # Original logic: Use raw value directly
             dicionario_kv[transformer] = kv2
         else:
             try:
@@ -502,7 +501,6 @@ class Transformer:
             except KeyError:
                 kv2 = float('nan')
             return(kv2)
-            #return(dicionario_kv[trload])
 
     def dict_pot_tr(transformer:Optional[str] = None,kva:Optional[float] = None, trload:Optional[str] = None): #retornar um dicionario de tensões de linha para a carga e acordo com critérios do Geoperdas
         if trload == None:
@@ -566,7 +564,7 @@ class Transformer:
             setattr(transformer_, f"_{mapping_key}", row[mapping_value])
             if mapping_key == "transformer":#modificação - 08/08
                 id_tr = Transformer.normalize_trafo_id(row[mapping_value])
-                Transformer.sec_line_kv(transformer=id_tr,kv2=getattr(transformer_,"kv2"))
+                Transformer.sec_line_kv(transformer=id_tr,kv2=getattr(transformer_,"kv2"), tip_trafo=getattr(transformer_, "_Tip_Lig", None))
             if mapping_key == "sit_ativ" and row[mapping_value] == "DS":
                 id_tr = Transformer.normalize_trafo_id(getattr(transformer_, f'_transformer'))
                 list_dsativ.append(id_tr)
@@ -603,6 +601,8 @@ class Transformer:
                 setattr(transformer_, f"_{mapping_key}", function_(str(param_value)))
                 if mapping_key == 'bus3_nodes':
                     id_tr = Transformer.normalize_trafo_id(getattr(transformer_, f'_transformer'))
+                    if "14339401A" in getattr(transformer_, f'_transformer'):
+                        print(f"TRF_14339401A bus3_nodes RAW={param_value} -> MAPPED={function_(str(param_value))}")
                     Transformer.sec_phase_kv(id_tr,getattr(transformer_, f'_kv2'),getattr(transformer_, f'_bus2_nodes'),function_(str(param_value)),tip_trafo=getattr(transformer_,'_Tip_Lig'))
                     Transformer.register_available_phases(id_tr, function_(str(param_value)), tip_trafo=getattr(transformer_, '_Tip_Lig'))
                 if mapping_key == 'kvas': #settings - limitar cargas BT (potencia atv do trafo): cria dicionário de trafos/potências
@@ -677,6 +677,12 @@ class Transformer:
         # 6. Store processed options
         trafo_data['single'] = sorted(list(set(available['single'])))
         trafo_data['double'] = sorted(list(set(available['double'])))
+        # Diagnostic logging
+        try:
+            with open("load_balancing_debug.log", "a") as log:
+                log.write(f"[REGISTER] Trafo: {transformer_id}, Tip: {tip_trafo}, CombinedNodes: {sorted(list(all_nodes))}, Single: {trafo_data['single']}, Double: {trafo_data['double']}\n")
+        except:
+            pass
 
     @staticmethod
     def dict_phase_kv():

@@ -38,5 +38,6 @@ class Settings:
     blnBalancCargasBT: bool = field(default=False, metadata={"description": "Balanceamento de cargas BT nos transformadores"})
     blnMergeSeriesLines: bool = field(default=False, metadata={"description": "Merge lines in series that share a common bus with no other connections and same properties"})
     blnPruneDanglingBranches: bool = field(default=False, metadata={"description": "Prune branches that do not end in a PC element (load, capacitor, etc.)"})
+    blnSeparateLoadsByTransformer: bool = field(default=False, metadata={"description": "Separate loads into individual files and folders by transformer"})
 
 settings = Settings()

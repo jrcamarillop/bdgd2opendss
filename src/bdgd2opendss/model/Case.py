@@ -256,6 +256,8 @@ buscoords buscoords.csv'''
 
         self.GenGeographicCoord()
 
+        Utils.prune_dangling_branches(self.dfs, self.feeder, Circuit.pac_ctmt()) #Prune dangling branches before topological analysis
+
         df_tramo, df_aux_trafo = Utils.create_aux_tramo(self.dfs,self.feeder)
         Utils.ordem_pacs(df_aux_tramo=df_tramo,pac_ctmt=Circuit.pac_ctmt()) #Define a ordem dos buses de acordo com o que a distribuidora usa
         Utils.elem_isolados(self.dfs,self.feeder,pac_ctmt=Circuit.pac_ctmt(),output_folder=self.output_folder) #Define quais são os elementos isolados e cria um log de elementos isolados

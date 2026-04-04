@@ -1016,3 +1016,104 @@ def merge_series_lines(dataframe_dict: dict, feeder: str):
 
     print(f"Merged {total_merged} series line segments in feeder {feeder}.")
 
+def prune_dangling_branches(dataframe_dict: dict, feeder: str, pac_ctmt: str):
+    """
+    Recursively remove branches that do not lead to any Power Conversion (PC) elements or the source.
+    PC elements include loads (UCBT, UCMT, PIP), generators (UGBT, UGMT), and capacitors (UNCRMT).
+    PD elements are pruned if they become "dead-ends" with no PC elements downstream.
+    """
+    if not settings.blnPruneDanglingBranches:
+        return
+
+    # Standard names for entities
+    if settings.TipoBDGD:
+        ucbt, ucmt, ugbt, ugmt = "UCBT", "UCMT", "UGBT", "UGMT"
+    else:
+        ucbt, ucmt, ugbt, ugmt = "UCBT_tab", "UCMT_tab", "UGBT_tab", "UGMT_tab"
+
+    # Power Delivery (PD) entities that form the network structure (Edges)
+    pd_entities = {'SSDMT', 'SSDBT', 'RAMLIG', 'UNSEMT', 'UNSEBT', 'UNTRMT', 'UNREMT'}
+    
+    # Power Conversion (PC) entities (Terminal nodes)
+    pc_entities = {ucbt, ucmt, 'PIP', ugbt, ugmt, 'UNCRMT'}
+
+    # Build the topological graph
+    G = nx.MultiGraph()
+    
+    # Track essential nodes (PACs)
+    essential_nodes = {pac_ctmt}  # Source is always essential
+    if "" in essential_nodes: essential_nodes.remove("")
+
+    # Map edges to their dataframe origin for later removal
+    # (node1, node2, key) -> (entity, index)
+    edge_map = {}
+
+    for entity in pd_entities:
+        if entity in dataframe_dict:
+            gdf = dataframe_dict[entity]['gdf']
+            if 'CTMT' in gdf.columns:
+                df = gdf.query("CTMT == @feeder")
+                for idx, row in df.iterrows():
+                    p1 = row.get('PAC_1')
+                    p2 = row.get('PAC_2')
+                    
+                    if pd.isna(p1) or str(p1).strip() == "": continue
+                    if pd.isna(p2) or str(p2).strip() == "": continue
+                    
+                    p1, p2 = str(p1).strip(), str(p2).strip()
+                    
+                    # Add edge with a unique key to handle parallel lines/switches
+                    key = f"{entity}_{idx}"
+                    G.add_edge(p1, p2, key=key)
+                    edge_map[key] = (entity, idx)
+
+    # Identify all Essential nodes from PC elements
+    for entity in pc_entities:
+        if entity in dataframe_dict:
+            gdf = dataframe_dict[entity]['gdf']
+            if 'CTMT' in gdf.columns:
+                df = gdf.query("CTMT == @feeder")
+                for _, row in df.iterrows():
+                    p = row.get('PAC')
+                    if pd.isna(p) or str(p).strip() == "": continue
+                    essential_nodes.add(str(p).strip())
+
+    # Recursive pruning
+    pruned_keys = set()
+    while True:
+        nodes_to_prune = []
+        for node in G.nodes():
+            # A node is a candidate for pruning if it has degree 1 and is NOT essential
+            if G.degree(node) == 1 and node not in essential_nodes:
+                nodes_to_prune.append(node)
+        
+        if not nodes_to_prune:
+            break
+            
+        for node in nodes_to_prune:
+            # Find the single edge connected to this leaf
+            # In a MultiGraph, edges(keys=True) returns (u, v, key, data)
+            edges = list(G.edges(node, data=True, keys=True))
+            if not edges: continue # Should not happen with degree 1
+            
+            u, v, key, data = edges[0]
+            
+            # Record for removal
+            pruned_keys.add(key)
+            # Remove from graph to potentially reveal new leaves
+            G.remove_edge(u, v, key=key)
+            
+            # If the node became isolated and is not essential, remove it
+            if G.degree(node) == 0:
+                G.remove_node(node)
+
+    if not pruned_keys:
+        return
+
+    # Drop pruned elements from the original DataFrames
+    for key in pruned_keys:
+        entity, idx = edge_map[key]
+        dataframe_dict[entity]['gdf'].drop(idx, inplace=True)
+
+    print(f"Pruned {len(pruned_keys)} dangling PD elements in feeder {feeder}.")
+

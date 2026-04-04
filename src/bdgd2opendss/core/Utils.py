@@ -647,19 +647,19 @@ def create_aux_tramo(dataframe: gpd.geodataframe.GeoDataFrame, feeder): #tabela 
     df_trafo = merge_df_aux_tr(dataframe['EQTRMT']['gdf'], dataframe['UNTRMT']['gdf'].query("CTMT==@alimentador"),
                             left_column='UNI_TR_MT', right_column='COD_ID')
     adapt_regulators_names(df_trafo,'transformer')
-    df_aux_ssdmt = dataframe['SSDMT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']]
+    df_aux_ssdmt = dataframe['SSDMT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
     df_aux_ssdmt['ELEM'] = 'SEGMMT'
-    df_aux_ssdbt = dataframe['SSDBT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']]
+    df_aux_ssdbt = dataframe['SSDBT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
     df_aux_ssdbt['ELEM'] = 'SEGMBT'
-    df_aux_ramalig = dataframe['RAMLIG']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']]
+    df_aux_ramalig = dataframe['RAMLIG']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
     df_aux_ramalig['ELEM'] = 'RML'
-    df_aux_unsemt = dataframe['UNSEMT']['gdf'].query("CTMT == @alimentador & P_N_OPE == 'F'")[['COD_ID','CTMT','PAC_1','PAC_2']]
+    df_aux_unsemt = dataframe['UNSEMT']['gdf'].query("CTMT == @alimentador & P_N_OPE == 'F'")[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
     df_aux_unsemt['ELEM'] = 'CHVMT'
-    df_aux_unsebt = dataframe['UNSEBT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']]
+    df_aux_unsebt = dataframe['UNSEBT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
     df_aux_unsebt['ELEM'] = 'CHVBT'
-    df_aux_trafo = df_trafo[['COD_ID','CTMT','PAC_1','PAC_2']]
+    df_aux_trafo = df_trafo[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
     df_aux_trafo['ELEM'] = 'TRAFO'
-    df_aux_regul = dataframe['UNREMT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']]
+    df_aux_regul = dataframe['UNREMT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
     df_aux_regul['ELEM'] = 'REGUL'
     df_aux_tramo = pd.concat([df_aux_ssdmt,df_aux_ssdbt,df_aux_ramalig,df_aux_unsemt,df_aux_unsebt,df_aux_trafo,df_aux_regul], ignore_index=True)
 
@@ -713,47 +713,47 @@ def elem_isolados(dataframe: Optional[gpd.geodataframe.GeoDataFrame] = None, fee
         adapt_regulators_names(df_trafo,'transformer')
         adapt_regulators_names(df_reg,'regulator')
 
-        df_aux_ssdmt = dataframe['SSDMT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']]
+        df_aux_ssdmt = dataframe['SSDMT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
         df_aux_ssdmt['ELEM'] = 'SEGMMT'
-        df_aux_ssdbt = dataframe['SSDBT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']]
+        df_aux_ssdbt = dataframe['SSDBT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
         df_aux_ssdbt['ELEM'] = 'SEGMBT'
-        df_aux_ramalig = dataframe['RAMLIG']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']]
+        df_aux_ramalig = dataframe['RAMLIG']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
         df_aux_ramalig['ELEM'] = 'RML'
-        df_aux_unsemt = dataframe['UNSEMT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']]
+        df_aux_unsemt = dataframe['UNSEMT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
         df_aux_unsemt['ELEM'] = 'CHVMT'
-        df_aux_unsebt = dataframe['UNSEBT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']]
+        df_aux_unsebt = dataframe['UNSEBT']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
         df_aux_unsebt['ELEM'] = 'CHVBT'
-        df_aux_trafo = df_trafo[['COD_ID','CTMT','PAC_1','PAC_2']]
+        df_aux_trafo = df_trafo[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
         df_aux_trafo['ELEM'] = 'TRAFO'
-        df_aux_regul = df_reg[['COD_ID','CTMT','PAC_1','PAC_2']]
+        df_aux_regul = df_reg[['COD_ID','CTMT','PAC_1','PAC_2']].copy()
         df_aux_regul['ELEM'] = 'REGUL'
         if settings.TipoBDGD:
-            df_aux_ucmt = dataframe[ucmt]['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC']]
+            df_aux_ucmt = dataframe[ucmt]['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC']].copy()
             df_aux_ucmt['PAC_2'] = ''
             df_aux_ucmt['ELEM'] = 'LDMT'
             df_aux_ucmt = df_aux_ucmt.rename(columns={'PAC':'PAC_1'})
-            df_aux_ucbt = dataframe[ucbt]['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC']]
+            df_aux_ucbt = dataframe[ucbt]['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC']].copy()
             df_aux_ucbt['PAC_2'] = ''
             df_aux_ucbt['ELEM'] = 'LDBT'
             df_aux_ucbt = df_aux_ucbt.rename(columns={'PAC':'PAC_1'})
         else:
-            df_aux_ucmt = dataframe[ucmt]['gdf'].query("CTMT == @alimentador")[['PN_CON','CTMT','PAC']]
+            df_aux_ucmt = dataframe[ucmt]['gdf'].query("CTMT == @alimentador")[['PN_CON','CTMT','PAC']].copy()
             df_aux_ucmt['PAC_2'] = ''
             df_aux_ucmt['ELEM'] = 'LDMT'
             df_aux_ucmt = df_aux_ucmt.rename(columns={'PAC':'PAC_1','PN_CON':'COD_ID'})
-            df_aux_ucbt = dataframe[ucbt]['gdf'].query("CTMT == @alimentador")[['RAMAL','CTMT','PAC']]
+            df_aux_ucbt = dataframe[ucbt]['gdf'].query("CTMT == @alimentador")[['RAMAL','CTMT','PAC']].copy()
             df_aux_ucbt['PAC_2'] = ''
             df_aux_ucbt['ELEM'] = 'LDBT'
             df_aux_ucbt = df_aux_ucbt.rename(columns={'PAC':'PAC_1','RAMAL':'COD_ID'})
-        df_aux_pip = dataframe['PIP']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC']]
+        df_aux_pip = dataframe['PIP']['gdf'].query("CTMT == @alimentador")[['COD_ID','CTMT','PAC']].copy()
         df_aux_pip['PAC_2'] = ''
         df_aux_pip['ELEM'] = 'PIP'
         df_aux_pip = df_aux_pip.rename(columns={'PAC':'PAC_1'})
-        df_aux_ugbt = dataframe[ugbt]['gdf'].query("CTMT == @alimentador")[['CEG_GD','CTMT','PAC']]
+        df_aux_ugbt = dataframe[ugbt]['gdf'].query("CTMT == @alimentador")[['CEG_GD','CTMT','PAC']].copy()
         df_aux_ugbt['PAC_2'] = ''
         df_aux_ugbt = df_aux_ugbt.rename(columns={'CEG_GD':'COD_ID','PAC':'PAC_1'})
         df_aux_ugbt['ELEM'] = 'GDBT'
-        df_aux_ugmt = dataframe[ugmt]['gdf'].query("CTMT == @alimentador")[['CEG_GD','CTMT','PAC']]
+        df_aux_ugmt = dataframe[ugmt]['gdf'].query("CTMT == @alimentador")[['CEG_GD','CTMT','PAC']].copy()
         df_aux_ugmt['PAC_2'] = ''
         df_aux_ugmt = df_aux_ugmt.rename(columns={'CEG_GD':'COD_ID','PAC':'PAC_1'})
         df_aux_ugmt['ELEM'] = 'GDMT'

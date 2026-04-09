@@ -13,6 +13,7 @@
 import copy
 import re
 from typing import Any, Optional
+import math
 import numpy
 import geopandas as gpd
 from tqdm import tqdm
@@ -481,8 +482,11 @@ class Transformer:
             if tip_trafo == 'MT':
                 # Split-phase: declared voltage is double the phase-to-neutral (e.g. 240V -> 120V)
                 dict_phase_kv[transformer] = kv2 / 2.0
+            elif tip_trafo in ['T', 'DA', 'DF']:
+                # Three-phase: phase-to-neutral voltage is line-to-line / sqrt(3)
+                dict_phase_kv[transformer] = kv2 / math.sqrt(3)
             else:
-                # Original logic: Use raw value directly
+                # Original logic: Use raw value directly (Monophasic or others)
                 dict_phase_kv[transformer] = kv2
         else:
             try:

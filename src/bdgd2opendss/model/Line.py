@@ -53,6 +53,23 @@ class Line:
     _x0: float = 0.0
     _x1: float = 0.0
 
+    dict_bus_nodes = {} # {bus_name: {nodes_set}}
+
+    @staticmethod
+    def _register_bus_nodes(bus_name, nodes_str):
+        if not bus_name or not nodes_str: return
+        try:
+            nodes = set(map(int, str(nodes_str).split('.')))
+            if bus_name not in Line.dict_bus_nodes:
+                Line.dict_bus_nodes[bus_name] = set()
+            Line.dict_bus_nodes[bus_name].update(nodes)
+        except Exception:
+            pass
+
+    @staticmethod
+    def get_bus_nodes(bus_name):
+        return Line.dict_bus_nodes.get(bus_name, set())
+
     @property
     def entity(self):
         return self._entity
@@ -315,6 +332,10 @@ class Line:
                         # Synchronize LineCode suffix (e.g. _1 -> _2)
                         self.suffix_linecode = str(self.phases)
 
+        # Register nodes for validation by loads
+        Line._register_bus_nodes(self.bus1, self.bus_nodes)
+        Line._register_bus_nodes(self.bus2, self.bus_nodes)
+
         if self.prefix_name == "CMT" or self.prefix_name == "CBT":
             return self.pattern_switch()
         else:
@@ -453,6 +474,7 @@ class Line:
         line_config = json_data['elements']['Line'][entity]
         feeder_name = ""
 
+        Line.dict_bus_nodes = {} # Reset for new feeder
         progress_bar = tqdm(dataframe.iterrows(), total=len(dataframe), desc="Line", unit=" lines", ncols=100)
         for _, row in progress_bar:
             line_ = Line._create_line_from_row(line_config, row)

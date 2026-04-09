@@ -23,6 +23,7 @@ from bdgd2opendss.core.Settings import settings
 from bdgd2opendss.model.Converter import convert_tten, convert_tfascon_bus, convert_tfascon_bus_prim, convert_tfascon_quant_fios, process_loadshape, process_loadshape2, convert_tfascon_conn_load, convert_tfascon_phases_load
 from bdgd2opendss.core.Utils import create_output_file, create_output_folder,adequar_modelo_carga, get_cod_year_bdgd, elem_isolados, seq_eletrica
 from bdgd2opendss.model.Transformer import Transformer #modificação 08/08
+from bdgd2opendss.model.Line import Line
 from bdgd2opendss.model.Circuit import Circuit
 from bdgd2opendss.model.Count_days import return_day_type
 import math
@@ -663,9 +664,17 @@ class Load:
                         
                         if is_single and single_options:
                             chosen = min(single_options, key=lambda p: balance_state.get(p, 0))
-                            load_.bus_nodes = chosen
-                            balance_state[chosen] = balance_state.get(chosen, 0) + 1
-                            log_entry += f" -> BALANCED (Single) to {chosen}"
+                            
+                            # Validate nodes against line connectivity
+                            bus_nodes = Line.get_bus_nodes(load_.bus1)
+                            proposed_nodes = set(map(int, chosen.split('.')))
+                            if bus_nodes and not proposed_nodes.issubset(bus_nodes):
+                                log_entry += f" -> VALIDATE FAIL (Bus {load_.bus1} nodes {bus_nodes} missing some of {proposed_nodes}) -> SKIPPED"
+                            else:
+                                load_.bus_nodes = chosen
+                                balance_state[chosen] = balance_state.get(chosen, 0) + 1
+                                log_entry += f" -> BALANCED (Single) to {chosen}"
+                                
                         elif is_double and double_options:
                             # Identify options with/without neutral based on original
                             options = [o for o in double_options if ((".4" in o or ".0" in o) == has_neutral)]
@@ -674,9 +683,16 @@ class Load:
                             
                             if options:
                                 chosen = min(options, key=lambda p: balance_state.get(p, 0))
-                                load_.bus_nodes = chosen
-                                balance_state[chosen] = balance_state.get(chosen, 0) + 1
-                                log_entry += f" -> BALANCED (Double) to {chosen}"
+                                
+                                # Validate nodes against line connectivity
+                                bus_nodes = Line.get_bus_nodes(load_.bus1)
+                                proposed_nodes = set(map(int, chosen.split('.')))
+                                if bus_nodes and not proposed_nodes.issubset(bus_nodes):
+                                    log_entry += f" -> VALIDATE FAIL (Bus {load_.bus1} nodes {bus_nodes} missing some of {proposed_nodes}) -> SKIPPED"
+                                else:
+                                    load_.bus_nodes = chosen
+                                    balance_state[chosen] = balance_state.get(chosen, 0) + 1
+                                    log_entry += f" -> BALANCED (Double) to {chosen}"
                             else:
                                 log_entry += " -> SKIPPED (No valid pair options)"
                         else:

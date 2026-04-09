@@ -334,7 +334,7 @@ class Load:
             else:
                 self.vminpu = settings.dblVPUMin 
 
-            if self.phases == '1':
+            if self.phases == '1' and self.conn == 'Wye':
                 kv = Transformer.sec_phase_kv(trload=self.transformer)
             else:
                 kv = Transformer.sec_line_kv(trload=self.transformer)

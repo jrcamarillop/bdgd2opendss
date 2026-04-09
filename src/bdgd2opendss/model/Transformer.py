@@ -481,6 +481,8 @@ class Transformer:
             if tip_trafo == 'MT':
                 # Split-phase: declared voltage is double the phase-to-neutral (e.g. 240V -> 120V)
                 dict_phase_kv[transformer] = kv2 / 2.0
+            elif tip_trafo in ['T', 'DA', 'DF']:
+                dict_phase_kv[transformer] = kv2 / numpy.sqrt(3)
             else:
                 # Original logic: Use raw value directly
                 dict_phase_kv[transformer] = kv2

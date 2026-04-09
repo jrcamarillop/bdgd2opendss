@@ -478,10 +478,10 @@ class Transformer:
     def sec_phase_kv(transformer:Optional[str] = None,kv2:Optional[float] = None,bus2_nodes:Optional[str] = None,bus3_nodes:Optional[str] = None, trload:Optional[str] = None, tip_trafo:Optional[str] = None): #retorna um dicionario de tensões de fase para cargas de acordo com critérios do Geoperdas
         if trload == None:
             # 1 - M, 2 - MT, 3 - B, 4 - T, 5 - DA, 6 - DF
-            if tip_trafo == 'MT':
+            if tip_trafo in ['MT', 2, '2']:
                 # Split-phase: declared voltage is double the phase-to-neutral (e.g. 240V -> 120V)
                 dict_phase_kv[transformer] = kv2 / 2.0
-            elif tip_trafo in ['T', 'DA', 'DF']:
+            elif tip_trafo in ['T', 'DA', 'DF', 4, 5, 6, '4', '5', '6']:
                 dict_phase_kv[transformer] = kv2 / numpy.sqrt(3)
             else:
                 # Original logic: Use raw value directly

@@ -308,8 +308,19 @@ class Transformer:
             v1_val = float(Circuit.kvbase()) if hasattr(Circuit, 'kvbase') else 13.8
             v2_val = 0.22
 
-        # Original logic: Use raw values directly
-        v1_final = v1_val
+        # Detection of Phase-to-Neutral primary connection
+        # If the transformer is 1-phase and connected to a single phase (1, 2, or 3) and a neutral (4, 0 or None)
+        # the rated voltage in DSS should be the phase-to-neutral voltage.
+        primary_nodes = self.bus1_nodes.split('.')
+        is_phase_neutral = (self.phases == 1 and
+                            any(n in ['1', '2', '3'] for n in primary_nodes) and
+                            (any(n in ['0', '4'] for n in primary_nodes) or len(primary_nodes) == 1))
+
+        if is_phase_neutral and v1_val > 1.0:
+            v1_final = v1_val / math.sqrt(3)
+        else:
+            v1_final = v1_val
+
         v2_final = v2_val
 
         # 4. Handle MRT and Tip_Lig logic for OpenDSS string formatting
@@ -361,15 +372,19 @@ class Transformer:
         kva = self.kvas
         taps = ' '.join([f'{self.tap}' for _ in range(self.windings)])
 
-        # Update dicionario_kv with the actual secondary winding voltage used in the DSS output.
+        # Update voltage base dictionaries for output generation
         id_tr = Transformer.normalize_trafo_id(self.transformer)
+        
+        # dicionario_kv: Nominal Line-to-Line bases (e.g., 0.22 kV)
+        dicionario_kv[id_tr] = v2_val
+        
+        # dict_phase_kv: Nominal Phase-to-Neutral bases (e.g., 0.11 kV or 0.127 kV)
         if self.Tip_Lig == 'MT':
-            # Split-phase: kv2 is total voltage, phase voltage for dict is kv2/2
-            actual_kv2 = v2_val / 2.0
+            dict_phase_kv[id_tr] = v2_val / 2.0
+        elif self.phases == 3:
+            dict_phase_kv[id_tr] = v2_val / math.sqrt(3)
         else:
-            actual_kv2 = v2_val
-            
-        dicionario_kv[id_tr] = actual_kv2
+            dict_phase_kv[id_tr] = v2_val
 
         return kvs, buses, conns, kvas, taps, kva, MRT
 

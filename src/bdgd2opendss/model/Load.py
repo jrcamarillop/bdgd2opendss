@@ -32,12 +32,20 @@ import numpy as np
 
 from dataclasses import dataclass
 
-df_energ_load = pd.DataFrame()
-df_energ_loadmt = pd.DataFrame()
 df_dias = pd.DataFrame()
 
 @dataclass
 class Load:
+
+    @staticmethod
+    def reset_state():
+        """Resets global state for a new feeder/circuit."""
+        global df_energ_load, df_energ_loadmt, df_dias
+        df_energ_load = pd.DataFrame()
+        df_energ_loadmt = pd.DataFrame()
+        df_dias = pd.DataFrame()
+        if hasattr(Load, "_session_files"):
+            Load._session_files.clear()
 
     _feeder: str = ""
     _pf: float = 0.92

@@ -36,9 +36,21 @@ dict_available_phases = {}
 list_dsativ = []
 list_posse = []
 list_reactors = []
-output = ""
 @dataclass
 class Transformer:
+
+    @staticmethod
+    def reset_state():
+        """Resets global state for a new feeder/circuit."""
+        global dicionario_kv, dicionario_kv_pri, dict_phase_kv, dict_pot_tr, dict_available_phases, list_dsativ, list_posse, list_reactors
+        dicionario_kv.clear()
+        dicionario_kv_pri.clear()
+        dict_phase_kv.clear()
+        dict_pot_tr.clear()
+        dict_available_phases.clear()
+        list_dsativ.clear()
+        list_posse.clear()
+        list_reactors.clear()
 
     _feeder: str = ""
     _fase: str = ""

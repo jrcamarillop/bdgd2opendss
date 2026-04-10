@@ -10,7 +10,17 @@ from bdgd2opendss.model import BusCoords
 from bdgd2opendss.core.Settings import settings
 from bdgd2opendss.core import Utils
 from bdgd2opendss.model.EnergyMeters import create_energymeters
+from bdgd2opendss.model import Count_days
 #from bdgd2opendss.model.KVBase import KVBase
+
+def _reset_all_state():
+    """Centralized reset of all global/class-level states across modules."""
+    Utils.reset_state()
+    Circuit.reset_state()
+    Transformer.reset_state()
+    Line.reset_state()
+    Load.reset_state()
+    Count_days.reset_state()
 
 @dataclass
 class Case:
@@ -246,6 +256,7 @@ buscoords buscoords.csv'''
 
     # this method populates Case object with data from BDGD
     def PopulaCase(self):
+        _reset_all_state()
         self.Populates_BASE()
 
         get_cod_year_bdgd(cod=self.cod_bdgd,data=self.data_bdgd) #Extrai o código e o ano da BDGD para nomear os arquivos dss

@@ -18,6 +18,13 @@ tr_vazios = []
 sufixo_config = ""
 substation = ""
 
+def reset_state():
+    """Resets global state for a new feeder/circuit."""
+    global tr_vazios, sufixo_config, substation
+    tr_vazios = []
+    sufixo_config = ""
+    substation = ""
+
 def log_erros(df_isolados:Optional[pd.DataFrame]=None,feeder:Optional[str]=None,output_directory: Optional[str] = None, ctmt:Optional[str] = None):
     logger = logging.getLogger(f'elementos_isolados_{get_cod_year_bdgd(typ="cod")}')
     if not logger.hasHandlers():

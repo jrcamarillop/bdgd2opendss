@@ -70,6 +70,13 @@ class Line:
     def get_bus_nodes(bus_name):
         return Line.dict_bus_nodes.get(bus_name, set())
 
+    @staticmethod
+    def reset_state():
+        """Resets class-level state for a new feeder/circuit."""
+        Line.dict_bus_nodes.clear()
+        if hasattr(Line, "_session_files"):
+            Line._session_files.clear()
+
     @property
     def entity(self):
         return self._entity

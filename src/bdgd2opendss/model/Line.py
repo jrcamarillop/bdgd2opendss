@@ -315,7 +315,7 @@ class Line:
         # 1. Phase Promotion for Load Balancing
         if settings.blnBalancCargasBT:
             # Re-identify BT lines (SSDBT, RAMLIG, UNSEBT usually mapped through prefix)
-            is_bt_line = (self.prefix_name in ["SBT", "RBT", "SDBT", "RAMLIG"]) or ("BT" in (self.entity or ""))
+            is_bt_line = (self.prefix_name in ["SBT", "RBT", "SDBT", "RAMLIG", "CBT"]) or ("BT" in (self.entity or ""))
             
             if is_bt_line and self.transformer:
                 trafo_id = Transformer.normalize_trafo_id(self.transformer)
@@ -326,18 +326,23 @@ class Line:
                     hot_nodes = [n for n in all_nodes if n in [1, 2, 3]]
                     neutral_node = 4 if 4 in all_nodes else (0 if 0 in all_nodes else None)
                     
-                    if len(hot_nodes) > self.phases:
-                        # Promote nodes to full transformer capability
-                        self.phases = len(hot_nodes)
+                    target_phases = len(hot_nodes)
+                    nodes_list = sorted(list(hot_nodes))
+                    if neutral_node is not None:
+                        target_phases += 1
+                        nodes_list.append(neutral_node)
+                    
+                    target_bus_nodes = ".".join(map(str, nodes_list))
+                    
+                    # Update if current setup is less capable than target
+                    # Or if it doesn't include the neutral!
+                    if target_phases > self.phases or self.bus_nodes != target_bus_nodes:
+                        self.phases = target_phases
+                        self.bus_nodes = target_bus_nodes
                         
-                        # Rebuild bus_nodes suffix (e.g. 1.2.4)
-                        nodes_list = sorted(list(hot_nodes))
-                        if neutral_node is not None:
-                            nodes_list.append(neutral_node)
-                        self.bus_nodes = ".".join(map(str, nodes_list))
-                        
-                        # Synchronize LineCode suffix (e.g. _1 -> _2)
-                        self.suffix_linecode = str(self.phases)
+                        # Synchronize LineCode suffix only for normal line elements (not CBT switches)
+                        if self.prefix_name not in ["CMT", "CBT"]:
+                            self.suffix_linecode = str(self.phases)
 
         # Register nodes for validation by loads
         Line._register_bus_nodes(self.bus1, self.bus_nodes)

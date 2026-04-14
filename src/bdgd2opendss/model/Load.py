@@ -709,11 +709,7 @@ class Load:
                         else:
                             log_entry += f" -> SKIPPED (is_single={is_single}, is_double={is_double})"
                     
-                    try:
-                        with open("load_balancing_debug.log", "a") as log:
-                            log.write(log_entry + "\n")
-                    except:
-                        pass
+                    # Diagnostic logging removed
             if not feeder_name:
                 feeder_name = load_.feeder
 

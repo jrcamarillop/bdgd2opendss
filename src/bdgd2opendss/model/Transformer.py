@@ -708,12 +708,7 @@ class Transformer:
         # 6. Store processed options
         trafo_data['single'] = sorted(list(set(available['single'])))
         trafo_data['double'] = sorted(list(set(available['double'])))
-        # Diagnostic logging
-        try:
-            with open("load_balancing_debug.log", "a") as log:
-                log.write(f"[REGISTER] Trafo: {transformer_id}, Tip: {tip_trafo}, CombinedNodes: {sorted(list(all_nodes))}, Single: {trafo_data['single']}, Double: {trafo_data['double']}\n")
-        except:
-            pass
+        # Diagnostic logging removed
 
     @staticmethod
     def dict_phase_kv():

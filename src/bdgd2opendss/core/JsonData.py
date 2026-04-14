@@ -89,11 +89,13 @@ class JsonData:
             JsonData.get_numeric_erros(df,column_types,name)
             return df
 
-    def sanitize_names(self, df):
+    def sanitize_names(self, df, table_name=None):
         """
         Substitui hífens, pontos e espaços por underline em colunas de identificação e nós para evitar erros no OpenDSS.
         """
         cols_to_sanitize = ['COD_ID', 'PAC_1', 'PAC_2', 'PAC_3', 'PAC', 'UN_RE', 'UNI_TR_MT', 'CEG_GD', 'PN_CON', 'RAMAL']
+        if table_name == 'CRVCRG' and 'COD_ID' in cols_to_sanitize:
+            cols_to_sanitize.remove('COD_ID')
         for col in cols_to_sanitize:
             if col in df.columns:
                 mask = df[col].notna()
@@ -136,7 +138,7 @@ class JsonData:
                                      engine='pyogrio', use_arrow=True)  # ! ignore_geometry não funciona, pq este parâmetro espera um bool e está recebendo str
                 start_conversion_time = time.time()
                 gdf_converted = self.convert_data_types(gdf_, table.data_types, table.name)
-                gdf_converted = self.sanitize_names(gdf_converted)
+                gdf_converted = self.sanitize_names(gdf_converted, table_name)
                 end_time = time.time()
                 
                 load_times.append(start_conversion_time - start_time)
@@ -163,7 +165,7 @@ class JsonData:
         for table_name, table in self.tables.items():
             gdf_ = gpd.read_file(file_name, layer="CTMT", columns=table.columns,
                                  engine='pyogrio', use_arrow=True)
-            gdf_ = self.sanitize_names(gdf_)
+            gdf_ = self.sanitize_names(gdf_, table_name)
 
             geodataframes[table_name] = {
                 'gdf': gdf_
@@ -184,7 +186,7 @@ class JsonData:
                 gdf_ = gpd.read_file(file_name, layer=table.name,
                                 columns=table.columns,ignore_geometry=table.ignore_geometry, 
                                  engine='pyogrio', use_arrow=True)  # ! ignore_geometry não funciona, pq este parâmetro espera um bool e está recebendo str
-                gdf_ = self.sanitize_names(gdf_)
+                gdf_ = self.sanitize_names(gdf_, table_name)
 
             geodataframes[table_name] = gdf_
             

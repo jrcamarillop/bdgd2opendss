@@ -88,6 +88,25 @@ class JsonData:
         except ValueError:
             JsonData.get_numeric_erros(df,column_types,name)
             return df
+
+    def sanitize_names(self, df):
+        """
+        Substitui hífens, pontos e espaços por underline em colunas de identificação e nós para evitar erros no OpenDSS.
+        """
+        cols_to_sanitize = ['COD_ID', 'PAC_1', 'PAC_2', 'PAC_3', 'PAC', 'UN_RE', 'UNI_TR_MT', 'CEG_GD', 'PN_CON', 'RAMAL']
+        for col in cols_to_sanitize:
+            if col in df.columns:
+                mask = df[col].notna()
+                if mask.any():
+                    is_cat = df[col].dtype.name == 'category'
+                    if is_cat:
+                        df[col] = df[col].astype('object')
+                    
+                    df.loc[mask, col] = df.loc[mask, col].astype(str).str.replace(r'[\-\.\s]+', '_', regex=True)
+                    
+                    if is_cat:
+                        df[col] = df[col].astype('category')
+        return df
         
     def create_geodataframes(self, file_name, runs=1):
         """
@@ -111,6 +130,7 @@ class JsonData:
                                      engine='pyogrio', use_arrow=True)  # ! ignore_geometry não funciona, pq este parâmetro espera um bool e está recebendo str
                 start_conversion_time = time.time()
                 gdf_converted = self.convert_data_types(gdf_, table.data_types, table.name)
+                gdf_converted = self.sanitize_names(gdf_converted)
                 end_time = time.time()
                 
                 load_times.append(start_conversion_time - start_time)
@@ -137,6 +157,7 @@ class JsonData:
         for table_name, table in self.tables.items():
             gdf_ = gpd.read_file(file_name, layer="CTMT", columns=table.columns,
                                  engine='pyogrio', use_arrow=True)
+            gdf_ = self.sanitize_names(gdf_)
 
             geodataframes[table_name] = {
                 'gdf': gdf_
@@ -156,7 +177,8 @@ class JsonData:
                 print(f'Creating geodataframe {table.name}')
                 gdf_ = gpd.read_file(file_name, layer=table.name,
                                 columns=table.columns,ignore_geometry=table.ignore_geometry, 
-                                     engine='pyogrio', use_arrow=True)  # ! ignore_geometry não funciona, pq este parâmetro espera um bool e está recebendo str
+                                 engine='pyogrio', use_arrow=True)  # ! ignore_geometry não funciona, pq este parâmetro espera um bool e está recebendo str
+                gdf_ = self.sanitize_names(gdf_)
 
             geodataframes[table_name] = gdf_
             

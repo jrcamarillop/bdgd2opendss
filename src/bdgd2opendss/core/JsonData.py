@@ -104,10 +104,11 @@ class JsonData:
                     
                     df.loc[mask, col] = df.loc[mask, col].astype(str).str.replace(r'[\-\.\s]+', '_', regex=True)
                     
-                    # Garantir que identificadores e nomes de nós não sejam puramente numéricos
-                    numeric_mask = df.loc[mask, col].str.match(r'^\d+$')
-                    if numeric_mask.any():
-                        df.loc[mask & (df[col].str.match(r'^\d+$')), col] = 'Node_' + df.loc[mask & (df[col].str.match(r'^\d+$')), col]
+                    # Garantir que nomes de nós não sejam puramente numéricos (apenas para colunas de PAC)
+                    if col in ['PAC_1', 'PAC_2', 'PAC_3', 'PAC']:
+                        numeric_mask = df.loc[mask, col].str.match(r'^\d+$')
+                        if numeric_mask.any():
+                            df.loc[mask & (df[col].str.match(r'^\d+$')), col] = 'Node_' + df.loc[mask & (df[col].str.match(r'^\d+$')), col]
                     
                     if is_cat:
                         df[col] = df[col].astype('category')

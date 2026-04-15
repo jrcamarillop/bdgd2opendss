@@ -283,12 +283,17 @@ class Transformer:
 
     def adapting_string_variables(self):
         """Standardizes voltages and identifiers for OpenDSS generation."""
+        # Ensure phases is an integer for comparisons
+        try:
+            self.phases = int(self.phases)
+        except (ValueError, TypeError):
+            self.phases = 1
 
-        # Enforce realistic phase constraints for Open-Delta and asymmetrical multi-tank banks
-        # Single-phase components imported under a 'Trifásico' tag will default to phases=3 if uncorrected, 
-        # causing OpenDSS to short unbalanced coils to the neutral matrix.
+        # 2. Enforce realistic phase constraints for Open-Delta and asymmetrical multi-tank banks
+        # Single-phase components (M, MT) should retain phases=1 even if connected phase-to-phase.
+        # This prevents OpenDSS from dividing the kV rating by sqrt(3) or 2 when interpreting connections.
         actual_phases = [n for n in self.bus1_nodes.split('.') if n in ['1', '2', '3']]
-        if len(actual_phases) > 0:
+        if self.phases > 1 and len(actual_phases) > 0:
             self.phases = len(actual_phases)
 
         # NOTE: Do NOT normalize self.transformer here. The BDGD uses trailing
@@ -324,8 +329,13 @@ class Transformer:
         v2_final = v2_val
 
         # 4. Handle MRT and Tip_Lig logic for OpenDSS string formatting
+        # Standard Split-phase 120/240V detection
+        is_split_phase = (str(self.Tip_Lig) in ['MT', '2', '2.0', 2] or 
+                          '4' in self.bus3_nodes or 
+                          self.bus2_nodes == '1.2.4')
+
         if self.MRT == 1: 
-            if '4' in self.bus3_nodes or self.bus2_nodes == '1.2.4':
+            if is_split_phase:
                 # Center-tap split-phase (120/240V) -> 0.12 0.12
                 # Each half-winding = full secondary line voltage / 2
                 half_kv = round(v2_val / 2, 3)
@@ -350,7 +360,7 @@ class Transformer:
                 buses = f'"{self.bus1}.{self.bus1_nodes}" "{self.bus2}.{self.bus2_nodes}"'
                 kvas = f'{self.kvas} {self.kvas}'
                 conns = f'{self.conn_p} {self.conn_s}'
-            elif '4' in self.bus3_nodes or self.bus2_nodes == '1.2.4':
+            elif is_split_phase:
                 # Standard Split-phase 120/240V -> 0.12 0.12
                 # Each half-winding = full secondary line voltage / 2
                 half_kv = round(v2_val / 2, 3)
@@ -379,7 +389,7 @@ class Transformer:
         dicionario_kv[id_tr] = v2_val
         
         # dict_phase_kv: Nominal Phase-to-Neutral bases (e.g., 0.11 kV or 0.127 kV)
-        if self.Tip_Lig == 'MT':
+        if is_split_phase:
             dict_phase_kv[id_tr] = v2_val / 2.0
         elif self.phases == 3:
             dict_phase_kv[id_tr] = v2_val / math.sqrt(3)

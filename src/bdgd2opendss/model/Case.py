@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 import pandas as pd
+import math
 
 from bdgd2opendss import Circuit, LineCode, Line, LoadShape, Transformer, RegControl, Load, PVsystem
 from bdgd2opendss.core.Utils import create_master_file, create_voltage_bases, get_cod_year_bdgd, create_df_trafos_vazios,get_configuration
@@ -189,7 +190,16 @@ class Case:
 
         master = "clear\n"
         y = create_voltage_bases(Transformer.dict_kv()) # line-to-line voltages
-        y.extend(create_voltage_bases(Transformer.dict_phase_kv())) # phase-to-neutral voltages
+        
+        # Phase-to-neutral voltages
+        phase_kvs = create_voltage_bases(Transformer.dict_phase_kv())
+        y.extend(phase_kvs)
+
+        # Add 3-phase equivalent bases for all detected phase-to-neutral voltages
+        # to satisfy OpenDSS CalcVoltageBases for 1-phase Star connections.
+        for v in phase_kvs:
+             y.append(round(v * math.sqrt(3), 3))
+
         y = list(set(y))
         y.sort()
         y.append(Circuit.kvbase())

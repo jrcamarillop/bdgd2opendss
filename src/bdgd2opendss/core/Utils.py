@@ -17,13 +17,15 @@ cod_year_bdgd = []
 tr_vazios = []
 sufixo_config = ""
 substation = ""
+lista_isolados = []
 
 def reset_state():
     """Resets global state for a new feeder/circuit."""
-    global tr_vazios, sufixo_config, substation
+    global tr_vazios, sufixo_config, substation, lista_isolados
     tr_vazios = []
     sufixo_config = ""
     substation = ""
+    lista_isolados = []
 
 def log_erros(df_isolados:Optional[pd.DataFrame]=None,feeder:Optional[str]=None,output_directory: Optional[str] = None, ctmt:Optional[str] = None):
     logger = logging.getLogger(f'elementos_isolados_{get_cod_year_bdgd(typ="cod")}')
@@ -183,6 +185,7 @@ def create_output_file(object_list=[], file_name="", object_lists="", file_names
 
                     except Exception as e:
                         print(f"An error occurred: {str(e)}")
+                        file.write(f"! Elemento com erro de dados: {str(e)}\n")
                         continue
         return f'{file_names[0]}_{get_cod_year_bdgd(typ="yearcod")}_{feeder}_{get_configuration()}.dss'
 
@@ -202,10 +205,7 @@ def create_output_file(object_list=[], file_name="", object_lists="", file_names
                         file.write(string.full_string() + "\n")
                 except Exception as e:
                     print(f"An error occurred: {str(e)}")
-                    if type(string) == str:
-                        file.write(f'{string} + "\n"!Elemento com erro de dados "\n"')
-                    else:
-                        file.write(f'{string.full_string()} + "\n"!Elemento com erro de dados "\n"')
+                    file.write(f"! Elemento com erro de dados: {str(e)}\n")
                     continue
         print(f'O arquivo {file_name}_{get_cod_year_bdgd(typ="yearcod")}_{feeder}_{get_configuration()} foi gerado\n')
 

@@ -93,9 +93,7 @@ class JsonData:
         """
         Substitui hífens, pontos e espaços por underline em colunas de identificação e nós para evitar erros no OpenDSS.
         """
-        cols_to_sanitize = ['COD_ID', 'PAC_1', 'PAC_2', 'PAC_3', 'PAC', 'UN_RE', 'UNI_TR_MT', 'CEG_GD', 'PN_CON', 'RAMAL']
-        if table_name == 'CRVCRG' and 'COD_ID' in cols_to_sanitize:
-            cols_to_sanitize.remove('COD_ID')
+        cols_to_sanitize = ['COD_ID', 'PAC_1', 'PAC_2', 'PAC_3', 'PAC', 'UN_RE', 'UNI_TR_MT', 'UNI_TR_S', 'CEG_GD', 'PN_CON', 'RAMAL', 'TIP_CND', 'TIP_CC', 'PAC_INI', 'CTMT', 'SUB', 'CONJ']
         for col in cols_to_sanitize:
             if col in df.columns:
                 mask = df[col].notna()
@@ -104,7 +102,7 @@ class JsonData:
                     if is_cat:
                         df[col] = df[col].astype('object')
                     
-                    df.loc[mask, col] = df.loc[mask, col].astype(str).str.replace(r'[\-\.\s]+', '_', regex=True)
+                    df.loc[mask, col] = df.loc[mask, col].astype(str).str.replace(r'[\-\.\:\s]+', '_', regex=True)
                     
                     # Garantir que nomes de nós não sejam puramente numéricos (apenas para colunas de PAC)
                     if col in ['PAC_1', 'PAC_2', 'PAC_3', 'PAC']:

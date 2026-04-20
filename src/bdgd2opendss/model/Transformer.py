@@ -718,7 +718,9 @@ class Transformer:
         # 6. Store processed options
         trafo_data['single'] = sorted(list(set(available['single'])))
         trafo_data['double'] = sorted(list(set(available['double'])))
-        # Diagnostic logging removed
+        
+        # Diagnostic logging for troubleshooting phase mismatches
+        # print(f"[DEBUG] Trafo {transformer_id}: nodes={all_nodes}, type={tip_trafo}, options={available}")
 
     @staticmethod
     def dict_phase_kv():

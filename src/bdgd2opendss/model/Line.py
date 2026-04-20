@@ -315,7 +315,9 @@ class Line:
         # 1. Phase Promotion for Load Balancing
         if settings.blnBalancCargasBT:
             # Re-identify BT lines (SSDBT, RAMLIG, UNSEBT usually mapped through prefix)
-            is_bt_line = (self.prefix_name in ["SBT", "RBT", "SDBT", "RAMLIG", "CBT"]) or ("BT" in (self.entity or ""))
+            # We check if prefix matches BT types or if 'BT' is in the original entity name
+            is_bt_line = (self.prefix_name in ["SBT", "RBT", "SDBT", "RAMLIG", "CBT"]) or \
+                         (self.entity and "BT" in self.entity.upper())
             
             if is_bt_line and self.transformer:
                 trafo_id = Transformer.normalize_trafo_id(self.transformer)
@@ -343,6 +345,9 @@ class Line:
                         # Synchronize LineCode suffix only for normal line elements (not CBT switches)
                         if self.prefix_name not in ["CMT", "CBT"]:
                             self.suffix_linecode = str(self.phases)
+                    elif self.phases == 4 and self.suffix_linecode != "4" and self.prefix_name not in ["CMT", "CBT"]:
+                        # Edge case: If somehow phases is 4 but suffix was not updated
+                        self.suffix_linecode = "4"
 
         # Register nodes for validation by loads
         Line._register_bus_nodes(self.bus1, self.bus_nodes)

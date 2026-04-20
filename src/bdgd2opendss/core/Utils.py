@@ -45,6 +45,24 @@ def log_erros(df_isolados:Optional[pd.DataFrame]=None,feeder:Optional[str]=None,
             logger.info(f'Elemento isolado - COD_ID:{row["COD_ID"]} - TIPO:{row["ELEM"]} - CTMT:{row["CTMT"]} - PAC1:{row["PAC_1"]} - PAC2:{row["PAC_2"]}')
     else:
         logger.info(f'O alimentador {feeder} não tem conexão com a barra incial {ctmt}')
+
+def log_linecode_warnings_csv(problematic_data: list, feeder: str, output_folder: str = ""):
+    """
+    Saves a CSV file with linecodes that have low impedance values.
+    """
+    if not problematic_data:
+        return
+        
+    output_directory = create_output_folder(feeder=feeder, output_folder=output_folder)
+    file_path = os.path.join(output_directory, 'linecode_impedance_warnings.csv')
+    
+    df = pd.DataFrame(problematic_data)
+    try:
+        df.to_csv(file_path, index=False)
+        print(f"Relatório de impedâncias baixas gerado em: {file_path}")
+    except Exception as e:
+        print(f"Erro ao criar CSV de avisos de linecode: {str(e)}")
+
 def load_json(json_file: str = "bdgd2dss.json"):
     """Carrega os dados de um arquivo JSON e retorna um objeto Python.
 

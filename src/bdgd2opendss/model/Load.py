@@ -628,7 +628,7 @@ class Load:
         crv_dataframe = Load.compute_pre_kw(crv_dataframe)
 
         feeder_name = ""
-        transformer_load_balance_state = {}
+        transformer_load_balance_state = {} # Stores {trafo_id: {1: energy, 2: energy, 3: energy}}
 
         progress_bar = tqdm(dataframe.iterrows(), total=len(dataframe), desc="Load", unit=" loads", ncols=100)
         for _, row in progress_bar:
@@ -671,10 +671,15 @@ class Load:
                                 single_options.append(f"1.{neutral}")
                             single_options = sorted(list(set(single_options)))
 
-                        balance_state = transformer_load_balance_state.setdefault(trafo_id, {})
+                        balance_state = transformer_load_balance_state.setdefault(trafo_id, {1: 0.0, 2: 0.0, 3: 0.0})
                         
+                        # Helper to calculate cost for a phase option string (e.g. "1.4" or "1.2")
+                        def get_option_cost(opt_str):
+                            nodes = [int(n) for n in opt_str.split('.') if n in ['1', '2', '3']]
+                            return sum(balance_state.get(n, 0) for n in nodes)
+
                         if is_single and single_options:
-                            chosen = min(single_options, key=lambda p: balance_state.get(p, 0))
+                            chosen = min(single_options, key=get_option_cost)
                             
                             # Validate nodes against line connectivity
                             bus_nodes = Line.get_bus_nodes(load_.bus1)
@@ -683,7 +688,9 @@ class Load:
                                 log_entry += f" -> VALIDATE FAIL (Bus {load_.bus1} nodes {bus_nodes} missing some of {proposed_nodes}) -> SKIPPED"
                             else:
                                 load_.bus_nodes = chosen
-                                balance_state[chosen] = balance_state.get(chosen, 0) + 1
+                                # Update energy on physical phase
+                                phase = int(chosen.split('.')[0])
+                                balance_state[phase] += float(getattr(load_, "_energia_total", 0.0))
                                 log_entry += f" -> BALANCED (Single) to {chosen}"
                                 
                         elif is_double and double_options:
@@ -693,7 +700,7 @@ class Load:
                                 options = double_options
                             
                             if options:
-                                chosen = min(options, key=lambda p: balance_state.get(p, 0))
+                                chosen = min(options, key=get_option_cost)
                                 
                                 # Validate nodes against line connectivity
                                 bus_nodes = Line.get_bus_nodes(load_.bus1)
@@ -702,7 +709,12 @@ class Load:
                                     log_entry += f" -> VALIDATE FAIL (Bus {load_.bus1} nodes {bus_nodes} missing some of {proposed_nodes}) -> SKIPPED"
                                 else:
                                     load_.bus_nodes = chosen
-                                    balance_state[chosen] = balance_state.get(chosen, 0) + 1
+                                    # Distribute energy across the two physical phases
+                                    phases = [int(n) for n in chosen.split('.') if n in ['1', '2', '3']]
+                                    energy_per_phase = float(getattr(load_, "_energia_total", 0.0)) / 2.0
+                                    for p in phases:
+                                        balance_state[p] += energy_per_phase
+
                                     log_entry += f" -> BALANCED (Double) to {chosen}"
                             else:
                                 log_entry += " -> SKIPPED (No valid pair options)"

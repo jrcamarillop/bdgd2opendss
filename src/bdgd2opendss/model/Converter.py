@@ -368,11 +368,11 @@ def convert_tfascon_conn_load(case):
         "AB": "Delta",
         "BC": "Delta",
         "CA": "Delta",
-        "ABN": "Delta",
-        "BCN": "Delta",
-        "CAN": "Delta",
+        "ABN": "Wye",
+        "BCN": "Wye",
+        "CAN": "Wye",
         "ABC": "Delta",
-        "ABCN": "Delta"
+        "ABCN": "Wye"
     }
     return switch_dict.get(case, '')
 
